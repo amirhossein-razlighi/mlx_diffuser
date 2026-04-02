@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mlx-diffusion"
+version = "0.1.0"
+description = "Diffusion training and sampling on Apple silicon with MLX."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [
+  { name = "Amirhossein" },
+]
+dependencies = [
+  "mlx>=0.31.0",
+  "numpy>=1.26.0",
+  "pillow>=11.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mlx_diffusion"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
