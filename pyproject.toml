@@ -10,13 +10,43 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 authors = [
-  { name = "Amirhossein" },
+  { name = "Amirhossein", email = "arazlighi@gmail.com" },
+]
+keywords = [
+  "mlx",
+  "diffusion",
+  "flow-matching",
+  "apple-silicon",
+  "metal",
+  "dit",
+  "stable-diffusion",
+  "generative-ai",
+  "image-generation",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Typing :: Typed",
 ]
 dependencies = [
   "mlx>=0.31.0",
   "numpy>=1.26.0",
   "pillow>=11.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/AmirHossein-razlighi/mlx_diffusion"
+Documentation = "https://AmirHossein-razlighi.github.io/mlx_diffusion/"
+Repository = "https://github.com/AmirHossein-razlighi/mlx_diffusion"
+Issues = "https://github.com/AmirHossein-razlighi/mlx_diffusion/issues"
+Changelog = "https://github.com/AmirHossein-razlighi/mlx_diffusion/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
