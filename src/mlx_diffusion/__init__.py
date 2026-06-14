@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from .configuration import Config
 from .modeling import ModelMixin
-from .models import DiT, DiTConfig
+from .models import (
+    AutoencoderKL,
+    AutoencoderKLConfig,
+    DiT,
+    DiTConfig,
+    UNet2D,
+    UNet2DConfig,
+)
 from .quantization import quantize_module
 from .schedulers import (
     DDIMScheduler,
@@ -22,6 +29,10 @@ __all__ = [
     "ModelMixin",
     "DiT",
     "DiTConfig",
+    "UNet2D",
+    "UNet2DConfig",
+    "AutoencoderKL",
+    "AutoencoderKLConfig",
     "quantize_module",
     "Scheduler",
     "DDPMScheduler",
