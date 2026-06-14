@@ -12,6 +12,7 @@ from .models import (
     UNet2D,
     UNet2DConfig,
 )
+from .pipelines import ClassConditionalPipeline, DiffusionPipeline
 from .quantization import quantize_module
 from .schedulers import (
     DDIMScheduler,
@@ -33,6 +34,8 @@ __all__ = [
     "UNet2DConfig",
     "AutoencoderKL",
     "AutoencoderKLConfig",
+    "DiffusionPipeline",
+    "ClassConditionalPipeline",
     "quantize_module",
     "Scheduler",
     "DDPMScheduler",
