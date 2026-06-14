@@ -14,6 +14,7 @@ from .models import (
 )
 from .pipelines import ClassConditionalPipeline, DiffusionPipeline
 from .quantization import quantize_module
+from .lora import inject_lora, load_lora, merge_lora, save_lora
 from .training import DiffusionTrainer, EMA
 from .schedulers import (
     DDIMScheduler,
@@ -39,6 +40,10 @@ __all__ = [
     "ClassConditionalPipeline",
     "DiffusionTrainer",
     "EMA",
+    "inject_lora",
+    "merge_lora",
+    "save_lora",
+    "load_lora",
     "quantize_module",
     "Scheduler",
     "DDPMScheduler",
