@@ -17,7 +17,16 @@ from mlx_diffusion.schedulers import FlowMatchEulerScheduler
 
 
 def _model(num_classes=0):
-    return DiT(DiTConfig(in_channels=3, patch_size=2, hidden_size=16, depth=2, num_heads=2, num_classes=num_classes))
+    return DiT(
+        DiTConfig(
+            in_channels=3,
+            patch_size=2,
+            hidden_size=16,
+            depth=2,
+            num_heads=2,
+            num_classes=num_classes,
+        )
+    )
 
 
 def test_compiled_matches_eager():

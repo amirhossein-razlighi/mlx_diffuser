@@ -12,8 +12,8 @@ import dataclasses
 import mlx.core as mx
 import numpy as np
 
-from .ddpm import DDPMConfig, DDPMScheduler
 from .base import expand_to
+from .ddpm import DDPMConfig, DDPMScheduler
 
 
 @dataclasses.dataclass
@@ -43,6 +43,7 @@ class EulerDiscreteScheduler(DDPMScheduler):
         self._step_index = 0
 
     def scale_model_input(self, sample: mx.array, t: mx.array) -> mx.array:
+        assert self.sigmas is not None, "call set_timesteps() before sampling"
         sigma = self.sigmas[self._step_index]
         return sample / mx.sqrt(sigma**2 + 1.0)
 
@@ -56,7 +57,10 @@ class EulerDiscreteScheduler(DDPMScheduler):
             return model_output * (-sigma / mx.sqrt(sigma**2 + 1.0)) + sample / (sigma**2 + 1.0)
         raise ValueError(f"EulerDiscreteScheduler does not support prediction_type={pt!r}.")
 
-    def step(self, model_output: mx.array, t: mx.array, sample: mx.array, key: mx.array | None = None) -> mx.array:
+    def step(
+        self, model_output: mx.array, t: mx.array, sample: mx.array, key: mx.array | None = None
+    ) -> mx.array:
+        assert self.sigmas is not None, "call set_timesteps() before sampling"
         i = self._step_index
         sigma = self.sigmas[i]
         sigma_next = self.sigmas[i + 1]

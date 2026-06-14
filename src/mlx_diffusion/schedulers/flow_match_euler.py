@@ -14,17 +14,18 @@ import dataclasses
 
 import mlx.core as mx
 
-from .base import Scheduler, SchedulerConfig, expand_to
+from .base import PredictionType, Scheduler, SchedulerConfig, expand_to
 
 
 @dataclasses.dataclass
 class FlowMatchConfig(SchedulerConfig):
-    prediction_type: str = "velocity"
+    prediction_type: PredictionType = "velocity"
     shift: float = 1.0  # >1 spends more steps at high noise (resolution-dependent)
 
 
 class FlowMatchEulerScheduler(Scheduler):
     config_class = FlowMatchConfig
+    config: FlowMatchConfig
 
     def __init__(self, config: FlowMatchConfig | None = None):
         super().__init__(config or FlowMatchConfig())
@@ -59,7 +60,10 @@ class FlowMatchEulerScheduler(Scheduler):
         self.timesteps = sigmas[:-1]
         self._step_index = 0
 
-    def step(self, model_output: mx.array, t: mx.array, sample: mx.array, key: mx.array | None = None) -> mx.array:
+    def step(
+        self, model_output: mx.array, t: mx.array, sample: mx.array, key: mx.array | None = None
+    ) -> mx.array:
+        assert self.sigmas is not None, "call set_timesteps() before sampling"
         i = self._step_index
         sigma = self.sigmas[i]
         sigma_next = self.sigmas[i + 1]

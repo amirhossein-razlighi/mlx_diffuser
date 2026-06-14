@@ -41,13 +41,15 @@ class Attention(nn.Module):
         b, t, _ = x.shape
         return x.reshape(b, t, self.num_heads, self.head_dim).transpose(0, 2, 1, 3)
 
-    def __call__(self, x: mx.array, context: mx.array | None = None, mask: mx.array | None = None) -> mx.array:
+    def __call__(
+        self, x: mx.array, context: mx.array | None = None, mask: mx.array | None = None
+    ) -> mx.array:
         kv = x if context is None else context
         q = self._split_heads(self.q_proj(x))
         k = self._split_heads(self.k_proj(kv))
         v = self._split_heads(self.v_proj(kv))
 
-        if self.q_norm is not None:
+        if self.q_norm is not None and self.k_norm is not None:
             q = self.q_norm(q)
             k = self.k_norm(k)
 

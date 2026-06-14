@@ -12,7 +12,6 @@ import mlx.core as mx
 import mlx.nn as nn
 
 from ..configuration import Config
-from ..modeling import ModelMixin
 from ..layers.unet_blocks import (
     Downsample2D,
     ResnetBlock2D,
@@ -20,6 +19,7 @@ from ..layers.unet_blocks import (
     Upsample2D,
     valid_groups,
 )
+from ..modeling import ModelMixin
 
 
 class DiagonalGaussian:
@@ -58,7 +58,7 @@ class _Encoder(nn.Module):
         n = len(boc)
         self.conv_in = nn.Conv2d(c.in_channels, boc[0], 3, padding=1)
         self.resnets: list[ResnetBlock2D] = []
-        self.downsamplers: list[nn.Module] = []
+        self.downsamplers: list[nn.Module | None] = []
         prev = boc[0]
         for i, ch in enumerate(boc):
             for _ in range(c.layers_per_block):
@@ -68,7 +68,9 @@ class _Encoder(nn.Module):
         self.mid_resnet1 = ResnetBlock2D(prev, prev, None, c.norm_groups)
         self.mid_attn = SpatialAttention(prev, max(1, prev // 64), None, c.norm_groups)
         self.mid_resnet2 = ResnetBlock2D(prev, prev, None, c.norm_groups)
-        self.norm_out = nn.GroupNorm(valid_groups(prev, c.norm_groups), prev, pytorch_compatible=True)
+        self.norm_out = nn.GroupNorm(
+            valid_groups(prev, c.norm_groups), prev, pytorch_compatible=True
+        )
         self.conv_out = nn.Conv2d(prev, 2 * c.latent_channels, 3, padding=1)
         self._n = n
         self._lpb = c.layers_per_block
@@ -80,8 +82,9 @@ class _Encoder(nn.Module):
             for _ in range(self._lpb):
                 x = self.resnets[ri](x)
                 ri += 1
-            if self.downsamplers[i] is not None:
-                x = self.downsamplers[i](x)
+            down = self.downsamplers[i]
+            if down is not None:
+                x = down(x)
         x = self.mid_resnet1(x)
         x = self.mid_attn(x)
         x = self.mid_resnet2(x)
@@ -99,14 +102,16 @@ class _Decoder(nn.Module):
         self.mid_attn = SpatialAttention(rev[0], max(1, rev[0] // 64), None, c.norm_groups)
         self.mid_resnet2 = ResnetBlock2D(rev[0], rev[0], None, c.norm_groups)
         self.resnets: list[ResnetBlock2D] = []
-        self.upsamplers: list[nn.Module] = []
+        self.upsamplers: list[nn.Module | None] = []
         prev = rev[0]
         for i, ch in enumerate(rev):
             for _ in range(c.layers_per_block + 1):
                 self.resnets.append(ResnetBlock2D(prev, ch, None, c.norm_groups))
                 prev = ch
             self.upsamplers.append(Upsample2D(ch) if i < n - 1 else None)
-        self.norm_out = nn.GroupNorm(valid_groups(prev, c.norm_groups), prev, pytorch_compatible=True)
+        self.norm_out = nn.GroupNorm(
+            valid_groups(prev, c.norm_groups), prev, pytorch_compatible=True
+        )
         self.conv_out = nn.Conv2d(prev, c.in_channels, 3, padding=1)
         self._n = n
         self._lpb = c.layers_per_block
@@ -121,12 +126,13 @@ class _Decoder(nn.Module):
             for _ in range(self._lpb + 1):
                 x = self.resnets[ri](x)
                 ri += 1
-            if self.upsamplers[i] is not None:
-                x = self.upsamplers[i](x)
+            up = self.upsamplers[i]
+            if up is not None:
+                x = up(x)
         return self.conv_out(nn.silu(self.norm_out(x)))
 
 
-class AutoencoderKL(ModelMixin):
+class AutoencoderKL(ModelMixin[AutoencoderKLConfig]):
     config_class = AutoencoderKLConfig
 
     def __init__(self, config: AutoencoderKLConfig):
@@ -145,6 +151,8 @@ class AutoencoderKL(ModelMixin):
     def decode(self, z: mx.array) -> mx.array:
         return self.decoder(z)
 
-    def __call__(self, x: mx.array, key: mx.array | None = None) -> tuple[mx.array, DiagonalGaussian]:
+    def __call__(
+        self, x: mx.array, key: mx.array | None = None
+    ) -> tuple[mx.array, DiagonalGaussian]:
         posterior = self.encode(x)
         return self.decode(posterior.sample(key)), posterior

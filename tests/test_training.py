@@ -6,7 +6,7 @@ import mlx.core as mx
 
 from mlx_diffusion.models import DiT, DiTConfig
 from mlx_diffusion.schedulers import DDPMScheduler, FlowMatchEulerScheduler
-from mlx_diffusion.training import DiffusionTrainer, EMA, batch_iterator, min_snr_weights
+from mlx_diffusion.training import EMA, DiffusionTrainer, batch_iterator, min_snr_weights
 
 
 def tiny_dit(hidden_size: int = 16, **kw) -> DiT:

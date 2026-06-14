@@ -6,7 +6,7 @@ any iterable of batches to ``DiffusionTrainer.fit``.
 
 from __future__ import annotations
 
-from typing import Iterator
+from collections.abc import Iterator
 
 import mlx.core as mx
 

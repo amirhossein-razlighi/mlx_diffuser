@@ -15,7 +15,6 @@ import mlx.core as mx
 import mlx.nn as nn
 
 from ..configuration import Config
-from ..modeling import ModelMixin
 from ..layers.embeddings import TimestepEmbedder
 from ..layers.unet_blocks import (
     Downsample2D,
@@ -25,6 +24,7 @@ from ..layers.unet_blocks import (
     Upsample2D,
     valid_groups,
 )
+from ..modeling import ModelMixin
 
 
 @dataclasses.dataclass
@@ -43,7 +43,7 @@ class UNet2DConfig(Config):
         return self.block_out_channels[0] * 4
 
 
-class UNet2D(ModelMixin):
+class UNet2D(ModelMixin[UNet2DConfig]):
     config_class = UNet2DConfig
 
     def __init__(self, config: UNet2DConfig):
@@ -98,7 +98,9 @@ class UNet2D(ModelMixin):
             level = n - 1 - i
             for _ in range(lpb + 1):
                 skip = skip_channels.pop()
-                self.up_resnets.append(ResnetBlock2D(prev + skip, ch, config.time_embed_dim, groups))
+                self.up_resnets.append(
+                    ResnetBlock2D(prev + skip, ch, config.time_embed_dim, groups)
+                )
                 self.up_attns.append(
                     SpatialAttention(ch, heads, ctx, groups) if attn_levels[level] else Identity()
                 )

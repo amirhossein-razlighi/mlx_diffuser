@@ -26,7 +26,9 @@ class Identity(nn.Module):
 class ResnetBlock2D(nn.Module):
     """GroupNorm-SiLU-Conv residual block with optional timestep conditioning."""
 
-    def __init__(self, in_channels: int, out_channels: int, temb_dim: int | None = None, groups: int = 32):
+    def __init__(
+        self, in_channels: int, out_channels: int, temb_dim: int | None = None, groups: int = 32
+    ):
         super().__init__()
         groups_in = valid_groups(in_channels, groups)
         groups_out = valid_groups(out_channels, groups)
@@ -35,9 +37,7 @@ class ResnetBlock2D(nn.Module):
         self.time_proj = nn.Linear(temb_dim, out_channels) if temb_dim else None
         self.norm2 = nn.GroupNorm(groups_out, out_channels, pytorch_compatible=True)
         self.conv2 = nn.Conv2d(out_channels, out_channels, 3, padding=1)
-        self.skip = (
-            nn.Conv2d(in_channels, out_channels, 1) if in_channels != out_channels else None
-        )
+        self.skip = nn.Conv2d(in_channels, out_channels, 1) if in_channels != out_channels else None
 
     def __call__(self, x: mx.array, temb: mx.array | None = None) -> mx.array:
         h = self.conv1(nn.silu(self.norm1(x)))
@@ -70,7 +70,9 @@ class Upsample2D(nn.Module):
 class SpatialAttention(nn.Module):
     """Self/cross attention over the spatial grid of a channels-last feature map."""
 
-    def __init__(self, channels: int, num_heads: int, context_dim: int | None = None, groups: int = 32):
+    def __init__(
+        self, channels: int, num_heads: int, context_dim: int | None = None, groups: int = 32
+    ):
         super().__init__()
         self.norm = nn.GroupNorm(valid_groups(channels, groups), channels, pytorch_compatible=True)
         self.attn = Attention(channels, num_heads, context_dim=context_dim)

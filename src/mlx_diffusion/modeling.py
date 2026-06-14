@@ -13,7 +13,7 @@ quantization, parameter counting) is provided here.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, Generic, TypeVar
 
 import mlx.core as mx
 import mlx.nn as nn
@@ -26,17 +26,18 @@ from .utils import as_dtype, get_logger
 
 WEIGHTS_NAME = "model.safetensors"
 
+C = TypeVar("C", bound=Config)
 M = TypeVar("M", bound="ModelMixin")
 logger = get_logger()
 
 
-class ModelMixin(nn.Module):
-    """Base class for all mlx-diffusion networks."""
+class ModelMixin(nn.Module, Generic[C]):
+    """Base class for all mlx-diffusion networks (generic over its config type)."""
 
     #: The Config subclass this model is constructed from.
-    config_class: type[Config]
+    config_class: type[C]
 
-    config: Config
+    config: C
 
     def save_pretrained(self, save_directory: str | Path, push_to_hub: str | None = None) -> Path:
         """Write ``config.json`` + ``model.safetensors`` into ``save_directory``.
@@ -79,11 +80,12 @@ class ModelMixin(nn.Module):
         if config_overrides:
             config = config.replace(**config_overrides)
 
-        model = cls(config)
+        model = cls(config)  # type: ignore[call-arg]  # subclasses take a config
         model.load_weights(str(local / WEIGHTS_NAME), strict=strict)
 
-        if dtype is not None:
-            model.set_dtype(as_dtype(dtype))
+        resolved_dtype = as_dtype(dtype)
+        if resolved_dtype is not None:
+            model.set_dtype(resolved_dtype)
         if quantize is not None:
             quantize_module(model, bits=quantize, group_size=quant_group_size)
 
@@ -94,8 +96,8 @@ class ModelMixin(nn.Module):
     def num_parameters(self, trainable_only: bool = False) -> int:
         """Total number of parameter elements in the model."""
         params = self.trainable_parameters() if trainable_only else self.parameters()
-        return sum(v.size for _, v in tree_flatten(params))
+        return sum(v.size for _, v in tree_flatten(params))  # type: ignore[union-attr, str-unpack]
 
     def __repr__(self) -> str:  # pragma: no cover - cosmetic
         n = self.num_parameters()
-        return f"{type(self).__name__}({n/1e6:.1f}M params)"
+        return f"{type(self).__name__}({n / 1e6:.1f}M params)"

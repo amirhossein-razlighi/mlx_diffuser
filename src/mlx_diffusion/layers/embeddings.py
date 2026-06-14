@@ -57,7 +57,9 @@ class LabelEmbedder(nn.Module):
     def null_label(self) -> int:
         return self.num_classes
 
-    def __call__(self, labels: mx.array, *, training: bool = False, key: mx.array | None = None) -> mx.array:
+    def __call__(
+        self, labels: mx.array, *, training: bool = False, key: mx.array | None = None
+    ) -> mx.array:
         if training and self.dropout_prob > 0:
             key = key if key is not None else mx.random.key(0)
             drop = mx.random.uniform(shape=labels.shape, key=key) < self.dropout_prob

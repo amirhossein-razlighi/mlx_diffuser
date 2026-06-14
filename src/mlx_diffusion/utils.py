@@ -39,9 +39,7 @@ def as_dtype(dtype: str | mx.Dtype | None) -> mx.Dtype | None:
     try:
         return DTYPES[dtype.lower()]
     except KeyError as exc:  # pragma: no cover - defensive
-        raise ValueError(
-            f"Unknown dtype {dtype!r}. Choose from {sorted(DTYPES)}."
-        ) from exc
+        raise ValueError(f"Unknown dtype {dtype!r}. Choose from {sorted(DTYPES)}.") from exc
 
 
 _LOG_LEVEL = os.environ.get("MLX_DIFFUSION_LOG", "INFO").upper()
@@ -52,9 +50,7 @@ def get_logger(name: str = "mlx_diffusion") -> logging.Logger:
     logger = logging.getLogger(name)
     if not logger.handlers:
         handler = logging.StreamHandler()
-        handler.setFormatter(
-            logging.Formatter("[%(name)s] %(levelname)s: %(message)s")
-        )
+        handler.setFormatter(logging.Formatter("[%(name)s] %(levelname)s: %(message)s"))
         logger.addHandler(handler)
         logger.setLevel(_LOG_LEVEL)
         logger.propagate = False
@@ -67,7 +63,7 @@ def seed_everything(seed: int) -> mx.array:
     return mx.random.key(seed)
 
 
-def to_array(image: "Image.Image | np.ndarray", dtype: mx.Dtype = mx.float32) -> mx.array:
+def to_array(image: Image.Image | np.ndarray, dtype: mx.Dtype = mx.float32) -> mx.array:
     """Convert a PIL image or HWC uint8/float array to a CHW-free [-1, 1] array.
 
     Returns shape ``(H, W, C)`` in ``[-1, 1]`` (MLX/`channels-last` convention).
@@ -82,7 +78,7 @@ def to_array(image: "Image.Image | np.ndarray", dtype: mx.Dtype = mx.float32) ->
     return mx.array(arr).astype(dtype)
 
 
-def to_pil(array: mx.array) -> "Image.Image":
+def to_pil(array: mx.array) -> Image.Image:
     """Convert a single ``(H, W, C)`` array in ``[-1, 1]`` to a PIL image."""
     import numpy as np
     from PIL import Image

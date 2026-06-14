@@ -33,4 +33,4 @@ class AdaLNModulation(nn.Module):
 
     def __call__(self, c: mx.array) -> list[mx.array]:
         out = self.linear(self.act(c))
-        return mx.split(out, self.n, axis=-1)
+        return list(mx.split(out, self.n, axis=-1))

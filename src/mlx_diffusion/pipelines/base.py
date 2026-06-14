@@ -10,8 +10,9 @@ hierarchy — concrete pipelines subclass this and implement ``__call__``.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import mlx.core as mx
 
@@ -24,7 +25,7 @@ MODEL_INDEX_NAME = "model_index.json"
 #: class name -> ModelMixin subclass (filled by register_models()).
 MODEL_REGISTRY: dict[str, type[ModelMixin]] = {}
 #: class name -> DiffusionPipeline subclass.
-PIPELINE_REGISTRY: dict[str, type["DiffusionPipeline"]] = {}
+PIPELINE_REGISTRY: dict[str, type[DiffusionPipeline]] = {}
 
 
 def register_models(*classes: type[ModelMixin]) -> None:
@@ -32,7 +33,7 @@ def register_models(*classes: type[ModelMixin]) -> None:
         MODEL_REGISTRY[c.__name__] = c
 
 
-def register_pipeline(cls: type["DiffusionPipeline"]) -> type["DiffusionPipeline"]:
+def register_pipeline(cls: type[DiffusionPipeline]) -> type[DiffusionPipeline]:
     PIPELINE_REGISTRY[cls.__name__] = cls
     return cls
 
@@ -72,15 +73,16 @@ class DiffusionPipeline:
         dtype: str | mx.Dtype | None = None,
         quantize: int | None = None,
         revision: str | None = None,
-    ) -> "DiffusionPipeline":
+    ) -> DiffusionPipeline:
         local = resolve(path_or_repo_id, revision=revision)
         index = json.loads((local / MODEL_INDEX_NAME).read_text())
 
-        target = cls
+        target: type[DiffusionPipeline] = cls
         if cls is DiffusionPipeline:  # dispatch to the concrete pipeline
-            target = PIPELINE_REGISTRY.get(index["_class_name"])
-            if target is None:
+            resolved = PIPELINE_REGISTRY.get(index["_class_name"])
+            if resolved is None:
                 raise ValueError(f"Unknown pipeline {index['_class_name']!r}. Is it registered?")
+            target = resolved
 
         components = {
             name: _load_component(class_name, local / name, dtype, quantize)
@@ -113,12 +115,12 @@ class DiffusionPipeline:
         is forced once per step to keep the lazy graph bounded.
         """
         steps = scheduler.timesteps
-        iterator = enumerate(steps)
+        assert steps is not None, "call scheduler.set_timesteps() before sampling"
         if progress:
             from ..utils import get_logger
 
             get_logger().info("sampling %d steps", len(steps))
-        for i, t in iterator:
+        for t in steps:
             scaled = scheduler.scale_model_input(latents, t)
             model_output = predict(scaled, t)
             key, step_key = mx.random.split(key)

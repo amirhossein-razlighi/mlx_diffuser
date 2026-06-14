@@ -21,7 +21,7 @@ def _cmd_generate(args: argparse.Namespace) -> None:
 
     pipe = DiffusionPipeline.from_pretrained(args.model, dtype=args.dtype, quantize=args.quantize)
     labels = [int(x) for x in args.labels.split(",")]
-    images = pipe(
+    images = pipe(  # type: ignore[operator]  # concrete pipelines are callable
         labels,
         sample_size=args.size,
         num_inference_steps=args.steps,
@@ -43,7 +43,9 @@ def _cmd_generate(args: argparse.Namespace) -> None:
 def _load_image_folder(folder: Path, size: int) -> mx.array:
     from PIL import Image
 
-    paths = sorted(p for p in folder.iterdir() if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"})
+    paths = sorted(
+        p for p in folder.iterdir() if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
+    )
     if not paths:
         raise SystemExit(f"No images found in {folder}")
     imgs = [to_array(Image.open(p).convert("RGB").resize((size, size))) for p in paths]
@@ -51,8 +53,8 @@ def _load_image_folder(folder: Path, size: int) -> mx.array:
 
 
 def _cmd_train(args: argparse.Namespace) -> None:
-    from ..models import DiT, DiTConfig
     from ..lora import inject_lora, save_lora
+    from ..models import DiT, DiTConfig
     from ..schedulers import DDPMScheduler, FlowMatchEulerScheduler
     from ..training import DiffusionTrainer, batch_iterator
 
@@ -62,7 +64,14 @@ def _cmd_train(args: argparse.Namespace) -> None:
     if args.base:
         model = DiT.from_pretrained(args.base)
     else:
-        model = DiT(DiTConfig(in_channels=3, hidden_size=args.hidden, depth=args.depth, num_heads=max(1, args.hidden // 64)))
+        model = DiT(
+            DiTConfig(
+                in_channels=3,
+                hidden_size=args.hidden,
+                depth=args.depth,
+                num_heads=max(1, args.hidden // 64),
+            )
+        )
 
     if args.lora:
         n = inject_lora(model, rank=args.lora_rank)
@@ -93,8 +102,8 @@ def _cmd_train(args: argparse.Namespace) -> None:
 # convert
 # --------------------------------------------------------------------------- #
 def _cmd_convert(args: argparse.Namespace) -> None:
-    from ..pipelines.base import MODEL_REGISTRY  # registers models on import
     from ..pipelines import DiffusionPipeline  # noqa: F401  (ensures registration)
+    from ..pipelines.base import MODEL_REGISTRY  # registers models on import
 
     config = json.loads((Path(args.input) / "config.json").read_text())
     # config.json tags the config class name (e.g. "DiTConfig"); map it to a model.
@@ -102,19 +111,26 @@ def _cmd_convert(args: argparse.Namespace) -> None:
     cls = by_config.get(config.get("_class_name"))
     if cls is None:
         raise SystemExit(
-            f"Unknown model config {config.get('_class_name')!r}. "
-            f"Known: {sorted(by_config)}"
+            f"Unknown model config {config.get('_class_name')!r}. Known: {sorted(by_config)}"
         )
     model = cls.from_pretrained(args.input, dtype=args.dtype, quantize=args.quantize)
     model.save_pretrained(args.output)
-    logger.info("converted %s -> %s (dtype=%s quantize=%s)", args.input, args.output, args.dtype, args.quantize)
+    logger.info(
+        "converted %s -> %s (dtype=%s quantize=%s)",
+        args.input,
+        args.output,
+        args.dtype,
+        args.quantize,
+    )
 
 
 # --------------------------------------------------------------------------- #
 # parser
 # --------------------------------------------------------------------------- #
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="mlx-diffusion", description="Diffusion on Apple silicon with MLX.")
+    p = argparse.ArgumentParser(
+        prog="mlx-diffusion", description="Diffusion on Apple silicon with MLX."
+    )
     sub = p.add_subparsers(dest="command", required=True)
 
     g = sub.add_parser("generate", help="sample images from a saved pipeline")

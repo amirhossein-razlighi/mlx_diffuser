@@ -30,7 +30,9 @@ class DiTBlock(nn.Module):
     gate), where shift/scale/gate are predicted from the conditioning vector ``c``.
     """
 
-    def __init__(self, dim: int, num_heads: int, mlp_ratio: float = 4.0, cond_dim: int | None = None):
+    def __init__(
+        self, dim: int, num_heads: int, mlp_ratio: float = 4.0, cond_dim: int | None = None
+    ):
         super().__init__()
         cond_dim = cond_dim or dim
         self.norm1 = nn.LayerNorm(dim, affine=False)

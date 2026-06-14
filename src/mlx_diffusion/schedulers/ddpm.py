@@ -25,6 +25,7 @@ class DDPMConfig(SchedulerConfig):
 
 class DDPMScheduler(Scheduler):
     config_class = DDPMConfig
+    config: DDPMConfig
 
     def __init__(self, config: DDPMConfig | None = None):
         super().__init__(config or DDPMConfig())
@@ -87,13 +88,17 @@ class DDPMScheduler(Scheduler):
     def set_timesteps(self, num_inference_steps: int) -> None:
         T = self.config.num_train_timesteps
         if num_inference_steps > T:
-            raise ValueError(f"num_inference_steps ({num_inference_steps}) > num_train_timesteps ({T}).")
+            raise ValueError(
+                f"num_inference_steps ({num_inference_steps}) > num_train_timesteps ({T})."
+            )
         self.num_inference_steps = num_inference_steps
         self._stride = T // num_inference_steps
         self.timesteps = (mx.arange(num_inference_steps) * self._stride)[::-1]
         self._step_index = 0
 
-    def step(self, model_output: mx.array, t: mx.array, sample: mx.array, key: mx.array | None = None) -> mx.array:
+    def step(
+        self, model_output: mx.array, t: mx.array, sample: mx.array, key: mx.array | None = None
+    ) -> mx.array:
         ti = int(t.item()) if isinstance(t, mx.array) else int(t)
         prev = ti - self._stride
         acp_t = self.alphas_cumprod[ti]

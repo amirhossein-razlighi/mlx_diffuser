@@ -15,7 +15,6 @@ import dataclasses
 import mlx.core as mx
 
 from ..configuration import Config
-from ..modeling import ModelMixin
 from ..layers.blocks import DiTBlock, FinalLayer
 from ..layers.embeddings import (
     LabelEmbedder,
@@ -23,6 +22,7 @@ from ..layers.embeddings import (
     TimestepEmbedder,
     get_2d_sincos_pos_embed,
 )
+from ..modeling import ModelMixin
 
 
 @dataclasses.dataclass
@@ -42,7 +42,7 @@ class DiTConfig(Config):
         return self.out_channels if self.out_channels is not None else self.in_channels
 
 
-class DiT(ModelMixin):
+class DiT(ModelMixin[DiTConfig]):
     config_class = DiTConfig
 
     def __init__(self, config: DiTConfig):

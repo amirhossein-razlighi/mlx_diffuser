@@ -16,11 +16,14 @@ class DDIMConfig(DDPMConfig):
 
 class DDIMScheduler(DDPMScheduler):
     config_class = DDIMConfig
+    config: DDIMConfig
 
     def __init__(self, config: DDIMConfig | None = None):
         super().__init__(config or DDIMConfig())
 
-    def step(self, model_output: mx.array, t: mx.array, sample: mx.array, key: mx.array | None = None) -> mx.array:
+    def step(
+        self, model_output: mx.array, t: mx.array, sample: mx.array, key: mx.array | None = None
+    ) -> mx.array:
         ti = int(t.item()) if isinstance(t, mx.array) else int(t)
         prev = ti - self._stride
         acp_t = self.alphas_cumprod[ti]
@@ -31,10 +34,10 @@ class DDIMScheduler(DDPMScheduler):
 
         eta = self.config.eta
         sigma = (
-            eta
-            * mx.sqrt((1.0 - acp_prev) / (1.0 - acp_t))
-            * mx.sqrt(1.0 - acp_t / acp_prev)
-        ) if prev >= 0 else mx.array(0.0)
+            (eta * mx.sqrt((1.0 - acp_prev) / (1.0 - acp_t)) * mx.sqrt(1.0 - acp_t / acp_prev))
+            if prev >= 0
+            else mx.array(0.0)
+        )
 
         dir_xt = mx.sqrt(mx.maximum(1.0 - acp_prev - sigma**2, 0.0)) * pred_eps
         prev_sample = mx.sqrt(acp_prev) * x0 + dir_xt

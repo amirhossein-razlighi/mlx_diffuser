@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Callable, Iterator
 
 import mlx.core as mx
 import mlx.nn as nn
@@ -151,6 +151,7 @@ def load_lora(model: nn.Module, path: str | Path) -> int:
         targets=tuple(config["targets"]),
     )
     weights = mx.load(str(path / ADAPTER_WEIGHTS_NAME))
+    assert isinstance(weights, dict)
     model.load_weights(list(weights.items()), strict=False)
     mx.eval(model.parameters())
     return count

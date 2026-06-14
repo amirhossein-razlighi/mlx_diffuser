@@ -21,6 +21,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest>=8.3.0",
+  "ruff>=0.8.0",
+  "mypy>=1.13.0",
 ]
 hub = [
   "huggingface_hub>=0.25.0",
@@ -38,3 +40,24 @@ packages = ["src/mlx_diffusion"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src/mlx_diffusion"]
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+warn_unused_ignores = false
+# Lenient by design: catch import/name errors without fighting MLX's dynamic API.

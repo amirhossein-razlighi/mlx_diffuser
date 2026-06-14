@@ -38,19 +38,27 @@ def main() -> None:
     args = p.parse_args()
 
     cfg = DiTConfig(
-        in_channels=3, patch_size=2, hidden_size=args.hidden, depth=args.depth,
-        num_heads=max(1, args.hidden // 64), num_classes=1000,
+        in_channels=3,
+        patch_size=2,
+        hidden_size=args.hidden,
+        depth=args.depth,
+        num_heads=max(1, args.hidden // 64),
+        num_classes=1000,
     )
     pipe = ClassConditionalPipeline(DiT(cfg), FlowMatchEulerScheduler())
     labels = mx.array(list(range(args.batch)))
-    print(f"model: {pipe.model.num_parameters()/1e6:.1f}M params  | {args.batch}x{args.size}x{args.size}  {args.steps} steps")
+    print(
+        f"model: {pipe.model.num_parameters() / 1e6:.1f}M params  | {args.batch}x{args.size}x{args.size}  {args.steps} steps"
+    )
 
     for compile in (False, True):
         reset_peak_memory()
         secs = run(pipe, labels, size=args.size, steps=args.steps, compile=compile)
         mem = memory_report()
         tag = "compiled" if compile else "eager"
-        print(f"  {tag:8s}: {secs*1000:8.1f} ms/batch  {secs/args.batch*1000:7.1f} ms/image  peak {mem['peak_gb']:.2f} GB")
+        print(
+            f"  {tag:8s}: {secs * 1000:8.1f} ms/batch  {secs / args.batch * 1000:7.1f} ms/image  peak {mem['peak_gb']:.2f} GB"
+        )
 
 
 if __name__ == "__main__":

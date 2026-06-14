@@ -42,7 +42,10 @@ def test_freezing_only_trains_adapters():
     trainable = sum(v.size for _, v in tree_flatten(model.trainable_parameters()))
     assert 0 < trainable < total
     # Every trainable leaf is a lora param.
-    assert all("lora_a" in name or "lora_b" in name for name, _ in tree_flatten(model.trainable_parameters()))
+    assert all(
+        "lora_a" in name or "lora_b" in name
+        for name, _ in tree_flatten(model.trainable_parameters())
+    )
 
 
 def test_merge_equivalence():

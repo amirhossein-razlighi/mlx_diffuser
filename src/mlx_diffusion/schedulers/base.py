@@ -98,7 +98,9 @@ class Scheduler:
         """Configure the inference timestep grid (descending) and reset state."""
         raise NotImplementedError
 
-    def step(self, model_output: mx.array, t: mx.array, sample: mx.array, key: mx.array | None = None) -> mx.array:
+    def step(
+        self, model_output: mx.array, t: mx.array, sample: mx.array, key: mx.array | None = None
+    ) -> mx.array:
         """Take one reverse step, returning the previous (less-noisy) sample."""
         raise NotImplementedError
 
@@ -111,5 +113,5 @@ class Scheduler:
         self.config.save(save_directory)
 
     @classmethod
-    def from_config(cls, config: SchedulerConfig) -> "Scheduler":
+    def from_config(cls, config: SchedulerConfig) -> Scheduler:
         return cls(config)

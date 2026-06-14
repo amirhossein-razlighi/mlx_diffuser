@@ -8,7 +8,7 @@ lives in the relevant modules; this collects the remaining knobs in one place.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import mlx.core as mx
 import mlx.nn as nn

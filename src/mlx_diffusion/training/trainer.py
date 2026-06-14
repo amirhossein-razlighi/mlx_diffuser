@@ -7,7 +7,7 @@ pure step function, so ``mx.compile`` can fuse the forward/backward/update.
 
 from __future__ import annotations
 
-from typing import Callable, Iterable
+from collections.abc import Callable, Iterable
 
 import mlx.core as mx
 import mlx.nn as nn

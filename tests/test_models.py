@@ -14,9 +14,7 @@ from mlx_diffusion.models import DiT, DiTConfig
 
 
 def tiny_config(**overrides) -> DiTConfig:
-    base = dict(
-        in_channels=3, patch_size=2, hidden_size=16, depth=2, num_heads=2, mlp_ratio=2.0
-    )
+    base = dict(in_channels=3, patch_size=2, hidden_size=16, depth=2, num_heads=2, mlp_ratio=2.0)
     base.update(overrides)
     return DiTConfig(**base)
 

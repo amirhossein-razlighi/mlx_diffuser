@@ -16,9 +16,7 @@ class EMA:
 
     def update(self, model: nn.Module) -> None:
         d = self.decay
-        self.shadow = tree_map(
-            lambda s, p: d * s + (1.0 - d) * p, self.shadow, model.parameters()
-        )
+        self.shadow = tree_map(lambda s, p: d * s + (1.0 - d) * p, self.shadow, model.parameters())
         mx.eval(self.shadow)
 
     def copy_to(self, model: nn.Module) -> None:
