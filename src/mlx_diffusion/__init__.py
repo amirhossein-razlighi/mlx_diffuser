@@ -14,6 +14,7 @@ from .models import (
 )
 from .pipelines import ClassConditionalPipeline, DiffusionPipeline
 from .quantization import quantize_module
+from .training import DiffusionTrainer, EMA
 from .schedulers import (
     DDIMScheduler,
     DDPMScheduler,
@@ -36,6 +37,8 @@ __all__ = [
     "AutoencoderKLConfig",
     "DiffusionPipeline",
     "ClassConditionalPipeline",
+    "DiffusionTrainer",
+    "EMA",
     "quantize_module",
     "Scheduler",
     "DDPMScheduler",
