@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mlx-diffusion"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Diffusion training and sampling on Apple silicon with MLX."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,6 +22,9 @@ dependencies = [
 dev = [
   "pytest>=8.3.0",
 ]
+
+[tool.hatch.version]
+path = "src/mlx_diffusion/version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mlx_diffusion"]
