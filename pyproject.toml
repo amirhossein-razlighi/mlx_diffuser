@@ -27,6 +27,10 @@ dev = [
 hub = [
   "huggingface_hub>=0.25.0",
 ]
+docs = [
+  "mkdocs-material>=9.5.0",
+  "mkdocstrings[python]>=0.27.0",
+]
 
 [project.scripts]
 mlx-diffusion = "mlx_diffusion.cli:main"
