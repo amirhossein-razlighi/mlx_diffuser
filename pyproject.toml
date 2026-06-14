@@ -22,6 +22,12 @@ dependencies = [
 dev = [
   "pytest>=8.3.0",
 ]
+hub = [
+  "huggingface_hub>=0.25.0",
+]
+
+[project.scripts]
+mlx-diffusion = "mlx_diffusion.cli:main"
 
 [tool.hatch.version]
 path = "src/mlx_diffusion/version.py"
