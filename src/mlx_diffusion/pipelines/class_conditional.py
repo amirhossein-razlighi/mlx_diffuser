@@ -10,6 +10,7 @@ from __future__ import annotations
 import mlx.core as mx
 
 from ..models.dit import DiT
+from ..perf import compile_model
 from ..schedulers import Scheduler
 from .base import DiffusionPipeline, register_pipeline
 
@@ -32,6 +33,7 @@ class ClassConditionalPipeline(DiffusionPipeline):
         guidance_scale: float = 4.0,
         seed: int | None = None,
         key: mx.array | None = None,
+        compile: bool = True,
         progress: bool = False,
     ) -> mx.array:
         labels = mx.array(class_labels) if not isinstance(class_labels, mx.array) else class_labels
@@ -45,6 +47,8 @@ class ClassConditionalPipeline(DiffusionPipeline):
         self.scheduler.set_timesteps(num_inference_steps)
         use_cfg = guidance_scale and guidance_scale > 1.0
         null = mx.full((b,), self.model.config.num_classes)
+        # Per-step shapes are constant, so a single compiled graph is reused.
+        model = compile_model(self.model) if compile else self.model
 
         def predict(scaled: mx.array, t: mx.array) -> mx.array:
             tb = mx.ones((b,)) * t
@@ -52,10 +56,10 @@ class ClassConditionalPipeline(DiffusionPipeline):
                 model_in = mx.concatenate([scaled, scaled], axis=0)
                 y = mx.concatenate([labels, null], axis=0)
                 tt = mx.concatenate([tb, tb], axis=0)
-                out = self.model(model_in, tt, y)
+                out = model(model_in, tt, y)
                 cond, uncond = out[:b], out[b:]
                 return self.classifier_free_guidance(cond, uncond, guidance_scale)
-            return self.model(scaled, tb, labels)
+            return model(scaled, tb, labels)
 
         latents = self.denoising_loop(self.scheduler, latents, predict, key, progress=progress)
         return latents

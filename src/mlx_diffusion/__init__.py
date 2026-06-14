@@ -15,6 +15,7 @@ from .models import (
 from .pipelines import ClassConditionalPipeline, DiffusionPipeline
 from .quantization import quantize_module
 from .lora import inject_lora, load_lora, merge_lora, save_lora
+from .perf import compile_model, memory_report, set_memory_limit
 from .training import DiffusionTrainer, EMA
 from .schedulers import (
     DDIMScheduler,
@@ -44,6 +45,9 @@ __all__ = [
     "merge_lora",
     "save_lora",
     "load_lora",
+    "compile_model",
+    "memory_report",
+    "set_memory_limit",
     "quantize_module",
     "Scheduler",
     "DDPMScheduler",
