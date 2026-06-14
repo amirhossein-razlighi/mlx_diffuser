@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .configuration import Config
 from .modeling import ModelMixin
+from .models import DiT, DiTConfig
 from .quantization import quantize_module
 from .schedulers import (
     DDIMScheduler,
@@ -19,6 +20,8 @@ from .version import __version__
 __all__ = [
     "Config",
     "ModelMixin",
+    "DiT",
+    "DiTConfig",
     "quantize_module",
     "Scheduler",
     "DDPMScheduler",
