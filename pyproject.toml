@@ -4,13 +4,36 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mlx-diffusion"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Diffusion training and sampling on Apple silicon with MLX."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 authors = [
-  { name = "Amirhossein" },
+  { name = "Amirhossein", email = "arazlighi@gmail.com" },
+]
+keywords = [
+  "mlx",
+  "diffusion",
+  "flow-matching",
+  "apple-silicon",
+  "metal",
+  "dit",
+  "stable-diffusion",
+  "generative-ai",
+  "image-generation",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Typing :: Typed",
 ]
 dependencies = [
   "mlx>=0.31.0",
@@ -18,10 +41,32 @@ dependencies = [
   "pillow>=11.0.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/AmirHossein-razlighi/mlx_diffusion"
+Documentation = "https://AmirHossein-razlighi.github.io/mlx_diffusion/"
+Repository = "https://github.com/AmirHossein-razlighi/mlx_diffusion"
+Issues = "https://github.com/AmirHossein-razlighi/mlx_diffusion/issues"
+Changelog = "https://github.com/AmirHossein-razlighi/mlx_diffusion/blob/main/CHANGELOG.md"
+
 [project.optional-dependencies]
 dev = [
   "pytest>=8.3.0",
+  "ruff>=0.8.0",
+  "mypy>=1.13.0",
 ]
+hub = [
+  "huggingface_hub>=0.25.0",
+]
+docs = [
+  "mkdocs-material>=9.5.0",
+  "mkdocstrings[python]>=0.27.0",
+]
+
+[project.scripts]
+mlx-diffusion = "mlx_diffusion.cli:main"
+
+[tool.hatch.version]
+path = "src/mlx_diffusion/version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mlx_diffusion"]
@@ -29,3 +74,24 @@ packages = ["src/mlx_diffusion"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src/mlx_diffusion"]
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+warn_unused_ignores = false
+# Lenient by design: catch import/name errors without fighting MLX's dynamic API.

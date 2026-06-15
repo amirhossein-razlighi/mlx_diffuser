@@ -1,0 +1,64 @@
+site_name: mlx-diffusion
+site_description: Diffusion & flow models on Apple silicon, powered by MLX.
+repo_url: https://github.com/AmirHossein-razlighi/mlx_diffusion
+repo_name: mlx_diffusion
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: true
+            show_root_heading: true
+            heading_level: 3
+            docstring_style: google
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Quickstart: quickstart.md
+  - Concepts: concepts.md
+  - Guides:
+      - Models: guides/models.md
+      - Schedulers: guides/schedulers.md
+      - Training: guides/training.md
+      - LoRA fine-tuning: guides/lora.md
+      - Performance: guides/performance.md
+      - CLI: guides/cli.md
+  - API reference:
+      - Models: reference/models.md
+      - Schedulers: reference/schedulers.md
+      - Pipelines: reference/pipelines.md
+      - Training & LoRA: reference/training.md

@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build & publish to PyPI
+    runs-on: ubuntu-latest
+    # The wheel is pure-Python (py3-none-any), so it builds anywhere; only runtime
+    # needs Apple silicon.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/mlx-diffusion
+    permissions:
+      id-token: write # OIDC for PyPI trusted publishing — no API token stored
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist + wheel
+        run: uv build
+      - name: Check metadata
+        run: uvx twine check dist/*
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
