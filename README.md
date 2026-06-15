@@ -4,9 +4,12 @@
 Train from scratch, fine-tune, or run inference — for image, video, and discrete
 modalities — from one small, readable codebase.
 
-[![CI](https://github.com/AmirHossein-razlighi/mlx_diffuser/actions/workflows/ci.yml/badge.svg)](https://github.com/AmirHossein-razlighi/mlx_diffuser/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![License](https://img.shields.io/badge/license-Apache--2.0-green)
+[![PyPI version](https://img.shields.io/pypi/v/mlx-diffuser?color=blue)](https://pypi.org/project/mlx-diffuser/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/mlx-diffuser)](https://pypi.org/project/mlx-diffuser/)
+[![Python](https://img.shields.io/pypi/pyversions/mlx-diffuser)](https://pypi.org/project/mlx-diffuser/)
+[![License](https://img.shields.io/pypi/l/mlx-diffuser)](https://github.com/amirhossein-razlighi/mlx_diffuser/blob/main/LICENSE)
+[![CI](https://github.com/amirhossein-razlighi/mlx_diffuser/actions/workflows/ci.yml/badge.svg)](https://github.com/amirhossein-razlighi/mlx_diffuser/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-online-brightgreen)](https://amirhossein-razlighi.github.io/mlx_diffuser/)
 
 ---
 
