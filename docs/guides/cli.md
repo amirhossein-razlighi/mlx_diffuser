@@ -1,11 +1,11 @@
 # Command-line interface
 
-Installing the package adds an `mlx-diffusion` command.
+Installing the package adds an `mlx-diffuser` command.
 
 ## generate
 
 ```bash
-mlx-diffusion generate MODEL --labels 1,2,3 --steps 50 --guidance 4.0 \
+mlx-diffuser generate MODEL --labels 1,2,3 --steps 50 --guidance 4.0 \
     --size 32 --seed 0 --dtype bf16 --quantize 4 --out samples/
 ```
 
@@ -18,11 +18,11 @@ Train from scratch or fine-tune on a folder of images:
 
 ```bash
 # from scratch
-mlx-diffusion train --data ./images --out my-model --steps 5000 \
+mlx-diffuser train --data ./images --out my-model --steps 5000 \
     --batch 16 --size 32 --hidden 384 --depth 12 --scheduler flow --ema 0.999
 
 # LoRA fine-tune of an existing model
-mlx-diffusion train --data ./photos --base my-model --lora --lora-rank 8 \
+mlx-diffuser train --data ./photos --base my-model --lora --lora-rank 8 \
     --out my-lora --steps 1000
 ```
 
@@ -31,8 +31,8 @@ mlx-diffusion train --data ./photos --base my-model --lora --lora-rank 8 \
 Re-save a model with a new dtype or weight quantization:
 
 ```bash
-mlx-diffusion convert my-model my-model-4bit --quantize 4
-mlx-diffusion convert my-model my-model-bf16 --dtype bf16
+mlx-diffuser convert my-model my-model-4bit --quantize 4
+mlx-diffuser convert my-model my-model-bf16 --dtype bf16
 ```
 
-Run `mlx-diffusion <command> --help` for the full option list.
+Run `mlx-diffuser <command> --help` for the full option list.

@@ -1,4 +1,4 @@
-# mlx-diffusion
+# mlx-diffuser
 
 **Diffusion & flow models on Apple silicon, powered by [MLX](https://github.com/ml-explore/mlx).**
 Train from scratch, fine-tune, or run inference — for image, video, and discrete
@@ -18,8 +18,8 @@ weight quantization, so large models fit and run fast on a Mac.
 ## Install
 
 ```bash
-pip install mlx-diffusion          # core
-pip install "mlx-diffusion[hub]"   # + Hugging Face Hub loading
+pip install mlx-diffuser          # core
+pip install "mlx-diffuser[hub]"   # + Hugging Face Hub loading
 ```
 
 Requires Apple silicon (M-series) and Python 3.11+.
@@ -36,7 +36,7 @@ images = pipe([1, 2, 3], num_inference_steps=50, guidance_scale=4.0, seed=0)
 …or from the terminal:
 
 ```bash
-mlx-diffusion generate path/or/hub-id --labels 1,2,3 --steps 50 --out samples/
+mlx-diffuser generate path/or/hub-id --labels 1,2,3 --steps 50 --out samples/
 ```
 
 ## Train from scratch
@@ -67,7 +67,7 @@ save_lora(model, "my-lora", rank=8, alpha=16)
 ```
 
 ```bash
-mlx-diffusion train --data ./photos --base my-model --lora --out my-lora --steps 1000
+mlx-diffuser train --data ./photos --base my-model --lora --out my-lora --steps 1000
 ```
 
 ## What's inside

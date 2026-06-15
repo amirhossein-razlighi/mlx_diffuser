@@ -55,8 +55,8 @@ Load it back later with `load_lora(model, "my-lora")`, or bake it in with
 ## From the command line
 
 ```bash
-mlx-diffusion generate path/or/hub-id --labels 1,2,3 --steps 50 --out samples/
-mlx-diffusion train --data ./photos --out my-model --steps 2000
-mlx-diffusion train --data ./photos --base my-model --lora --out my-lora
-mlx-diffusion convert my-model my-model-4bit --quantize 4
+mlx-diffuser generate path/or/hub-id --labels 1,2,3 --steps 50 --out samples/
+mlx-diffuser train --data ./photos --out my-model --steps 2000
+mlx-diffuser train --data ./photos --base my-model --lora --out my-lora
+mlx-diffuser convert my-model my-model-4bit --quantize 4
 ```

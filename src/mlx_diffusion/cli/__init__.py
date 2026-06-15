@@ -1,4 +1,4 @@
-"""Command-line interface: ``mlx-diffusion generate | train | convert``."""
+"""Command-line interface: ``mlx-diffuser generate | train | convert``."""
 
 from __future__ import annotations
 
@@ -129,7 +129,7 @@ def _cmd_convert(args: argparse.Namespace) -> None:
 # --------------------------------------------------------------------------- #
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="mlx-diffusion", description="Diffusion on Apple silicon with MLX."
+        prog="mlx-diffuser", description="Diffusion on Apple silicon with MLX."
     )
     sub = p.add_subparsers(dest="command", required=True)
 

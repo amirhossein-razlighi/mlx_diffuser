@@ -1,4 +1,4 @@
-"""mlx-diffusion: diffusion & flow models on Apple silicon, powered by MLX."""
+"""mlx-diffuser: diffusion & flow models on Apple silicon, powered by MLX."""
 
 from __future__ import annotations
 

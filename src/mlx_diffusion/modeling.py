@@ -32,7 +32,7 @@ logger = get_logger()
 
 
 class ModelMixin(nn.Module, Generic[C]):
-    """Base class for all mlx-diffusion networks (generic over its config type)."""
+    """Base class for all mlx-diffuser networks (generic over its config type)."""
 
     #: The Config subclass this model is constructed from.
     config_class: type[C]

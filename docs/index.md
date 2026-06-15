@@ -1,4 +1,4 @@
-# mlx-diffusion
+# mlx-diffuser
 
 **Diffusion & flow models on Apple silicon, powered by [MLX](https://github.com/ml-explore/mlx).**
 

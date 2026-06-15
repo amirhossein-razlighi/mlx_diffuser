@@ -24,7 +24,7 @@ First public release.
   parameter-efficient fine-tuning.
 - **Performance** — `mx.compile` helpers, weight quantization, fused attention,
   and unified-memory controls.
-- **CLI** — `mlx-diffusion generate | train | convert`.
+- **CLI** — `mlx-diffuser generate | train | convert`.
 - **Tooling** — ruff, mypy, pytest (61 tests), GitHub Actions CI on Apple-silicon
   runners, and a mkdocs-material documentation site.
 

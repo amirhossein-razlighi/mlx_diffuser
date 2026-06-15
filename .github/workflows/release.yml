@@ -15,7 +15,7 @@ jobs:
     # needs Apple silicon.
     environment:
       name: pypi
-      url: https://pypi.org/p/mlx-diffusion
+      url: https://pypi.org/p/mlx-diffuser
     permissions:
       id-token: write # OIDC for PyPI trusted publishing — no API token stored
     steps:

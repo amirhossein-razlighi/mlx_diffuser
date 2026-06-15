@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in mlx-diffusion! This is a Mac-native library, so
+Thanks for your interest in mlx-diffuser! This is a Mac-native library, so
 development requires Apple silicon.
 
 ## Setup

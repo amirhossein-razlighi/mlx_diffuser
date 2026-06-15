@@ -1,10 +1,10 @@
 # Installation
 
-mlx-diffusion requires **Apple silicon** (M-series) and **Python 3.11+**.
+mlx-diffuser requires **Apple silicon** (M-series) and **Python 3.11+**.
 
 ```bash
-pip install mlx-diffusion          # core
-pip install "mlx-diffusion[hub]"   # + Hugging Face Hub loading
+pip install mlx-diffuser          # core
+pip install "mlx-diffuser[hub]"   # + Hugging Face Hub loading
 ```
 
 ## Extras

@@ -3,7 +3,7 @@ requires = ["hatchling>=1.25.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mlx-diffusion"
+name = "mlx-diffuser"
 dynamic = ["version"]
 description = "Diffusion training and sampling on Apple silicon with MLX."
 readme = "README.md"
@@ -63,7 +63,7 @@ docs = [
 ]
 
 [project.scripts]
-mlx-diffusion = "mlx_diffusion.cli:main"
+mlx-diffuser = "mlx_diffusion.cli:main"
 
 [tool.hatch.version]
 path = "src/mlx_diffusion/version.py"

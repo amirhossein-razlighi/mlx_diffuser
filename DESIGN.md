@@ -1,4 +1,4 @@
-# mlx-diffusion — Architecture & Design
+# mlx-diffuser — Architecture & Design
 
 > Diffusion and flow/score generative models on Apple silicon, powered by MLX.
 > Train from scratch, fine-tune, or run inference for image, video, and discrete
@@ -101,7 +101,7 @@ src/mlx_diffusion/
     lora.py              #   LoRALinear/Conv, inject/extract/merge/save/load
 
   cli/
-    __main__.py          #   `mlx-diffusion generate|train|convert`
+    __main__.py          #   `mlx-diffuser generate|train|convert`
 ```
 
 ## 4. Key conventions (the "PyTorch/HF feel")

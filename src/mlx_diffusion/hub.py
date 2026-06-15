@@ -11,7 +11,7 @@ from pathlib import Path
 
 _INSTALL_HINT = (
     "Resolving a Hub repo id requires `huggingface_hub`. "
-    "Install it with `pip install mlx-diffusion[hub]` (or `pip install huggingface_hub`)."
+    "Install it with `pip install mlx-diffuser[hub]` (or `pip install huggingface_hub`)."
 )
 
 
@@ -54,7 +54,7 @@ def push_folder(
     repo_id: str,
     *,
     private: bool = False,
-    commit_message: str = "Upload with mlx-diffusion",
+    commit_message: str = "Upload with mlx-diffuser",
 ) -> str:
     """Upload a saved model/pipeline folder to the Hub. Returns the repo URL."""
     try:

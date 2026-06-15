@@ -1,6 +1,6 @@
 # Performance on Apple silicon
 
-mlx-diffusion leans on MLX's strengths. Most of it is on by default.
+mlx-diffuser leans on MLX's strengths. Most of it is on by default.
 
 ## Compilation
 
