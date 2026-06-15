@@ -4,7 +4,7 @@
 Train from scratch, fine-tune, or run inference — for image, video, and discrete
 modalities — from one small, readable codebase.
 
-[![CI](https://github.com/AmirHossein-razlighi/mlx_diffusion/actions/workflows/ci.yml/badge.svg)](https://github.com/AmirHossein-razlighi/mlx_diffusion/actions/workflows/ci.yml)
+[![CI](https://github.com/AmirHossein-razlighi/mlx_diffuser/actions/workflows/ci.yml/badge.svg)](https://github.com/AmirHossein-razlighi/mlx_diffuser/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-Apache--2.0-green)
 
@@ -27,7 +27,7 @@ Requires Apple silicon (M-series) and Python 3.11+.
 ## Generate
 
 ```python
-from mlx_diffusion import DiffusionPipeline
+from mlx_diffuser import DiffusionPipeline
 
 pipe = DiffusionPipeline.from_pretrained("path/or/hub-id", dtype="bf16", quantize=4)
 images = pipe([1, 2, 3], num_inference_steps=50, guidance_scale=4.0, seed=0)
@@ -42,9 +42,9 @@ mlx-diffuser generate path/or/hub-id --labels 1,2,3 --steps 50 --out samples/
 ## Train from scratch
 
 ```python
-from mlx_diffusion import DiT, DiTConfig, DiffusionTrainer
-from mlx_diffusion.schedulers import FlowMatchEulerScheduler
-from mlx_diffusion.training import batch_iterator
+from mlx_diffuser import DiT, DiTConfig, DiffusionTrainer
+from mlx_diffuser.schedulers import FlowMatchEulerScheduler
+from mlx_diffuser.training import batch_iterator
 
 model = DiT(DiTConfig(in_channels=3, hidden_size=384, depth=12, num_heads=6))
 trainer = DiffusionTrainer(model, FlowMatchEulerScheduler(), lr=1e-4, ema_decay=0.999)
@@ -55,9 +55,9 @@ model.save_pretrained("my-model")
 ## Fine-tune with LoRA (on your laptop)
 
 ```python
-from mlx_diffusion import DiT, inject_lora, save_lora
-from mlx_diffusion.schedulers import FlowMatchEulerScheduler
-from mlx_diffusion import DiffusionTrainer
+from mlx_diffuser import DiT, inject_lora, save_lora
+from mlx_diffuser.schedulers import FlowMatchEulerScheduler
+from mlx_diffuser import DiffusionTrainer
 
 model = DiT.from_pretrained("my-model")
 inject_lora(model, rank=8)                 # base frozen; only adapters train
@@ -88,7 +88,7 @@ The library rests on three orthogonal pieces — a **process** (the noise/flow m
 a **network** (a plain `nn.Module`), and a **pipeline** (inference glue). Keeping
 them independent is what lets the same network train under DDPM today and
 flow-matching tomorrow. See [DESIGN.md](DESIGN.md) and the
-[documentation](https://AmirHossein-razlighi.github.io/mlx_diffusion/).
+[documentation](https://AmirHossein-razlighi.github.io/mlx_diffuser/).
 
 ## License
 

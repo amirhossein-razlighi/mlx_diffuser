@@ -13,7 +13,7 @@ sampling-time reverse step.
 ## Common interface
 
 ```python
-from mlx_diffusion.schedulers import FlowMatchEulerScheduler
+from mlx_diffuser.schedulers import FlowMatchEulerScheduler
 
 sch = FlowMatchEulerScheduler()
 
@@ -43,6 +43,6 @@ Prediction type is set on the config (e.g.
 
 ```python
 sch.save_pretrained("scheduler/")
-from mlx_diffusion.schedulers import load_scheduler
+from mlx_diffuser.schedulers import load_scheduler
 sch = load_scheduler("scheduler/")   # concrete class restored from config
 ```

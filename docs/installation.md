@@ -18,8 +18,8 @@ pip install "mlx-diffuser[hub]"   # + Hugging Face Hub loading
 ## From source
 
 ```bash
-git clone https://github.com/AmirHossein-razlighi/mlx_diffusion
-cd mlx_diffusion
+git clone https://github.com/AmirHossein-razlighi/mlx_diffuser
+cd mlx_diffuser
 uv sync --extra dev
 uv run pytest -q
 ```

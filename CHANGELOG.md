@@ -28,4 +28,4 @@ First public release.
 - **Tooling** — ruff, mypy, pytest (61 tests), GitHub Actions CI on Apple-silicon
   runners, and a mkdocs-material documentation site.
 
-[0.1.0]: https://github.com/AmirHossein-razlighi/mlx_diffusion/releases/tag/v0.1.0
+[0.1.0]: https://github.com/AmirHossein-razlighi/mlx_diffuser/releases/tag/v0.1.0

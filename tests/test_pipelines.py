@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import mlx.core as mx
 
-from mlx_diffusion.models import DiT, DiTConfig
-from mlx_diffusion.pipelines import ClassConditionalPipeline, DiffusionPipeline
-from mlx_diffusion.schedulers import DDIMScheduler, FlowMatchEulerScheduler
+from mlx_diffuser.models import DiT, DiTConfig
+from mlx_diffuser.pipelines import ClassConditionalPipeline, DiffusionPipeline
+from mlx_diffuser.schedulers import DDIMScheduler, FlowMatchEulerScheduler
 
 
 def build_pipeline(scheduler=None) -> ClassConditionalPipeline:

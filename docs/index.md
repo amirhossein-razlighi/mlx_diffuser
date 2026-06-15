@@ -7,7 +7,7 @@ modalities — from one small, readable codebase. If you know PyTorch and
 🤗 `diffusers`, you already know this library.
 
 ```python
-from mlx_diffusion import DiffusionPipeline
+from mlx_diffuser import DiffusionPipeline
 
 pipe = DiffusionPipeline.from_pretrained("path/or/hub-id", dtype="bf16", quantize=4)
 images = pipe([1, 2, 3], num_inference_steps=50, guidance_scale=4.0, seed=0)

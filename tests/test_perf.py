@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import mlx.core as mx
 
-from mlx_diffusion.models import DiT, DiTConfig
-from mlx_diffusion.perf import (
+from mlx_diffuser.models import DiT, DiTConfig
+from mlx_diffuser.perf import (
     bytes_to_gb,
     clear_cache,
     compile_model,
     memory_report,
     reset_peak_memory,
 )
-from mlx_diffusion.pipelines import ClassConditionalPipeline
-from mlx_diffusion.schedulers import FlowMatchEulerScheduler
+from mlx_diffuser.pipelines import ClassConditionalPipeline
+from mlx_diffuser.schedulers import FlowMatchEulerScheduler
 
 
 def _model(num_classes=0):

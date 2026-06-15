@@ -1,7 +1,7 @@
 site_name: mlx-diffuser
 site_description: Diffusion & flow models on Apple silicon, powered by MLX.
-repo_url: https://github.com/AmirHossein-razlighi/mlx_diffusion
-repo_name: mlx_diffusion
+repo_url: https://github.com/AmirHossein-razlighi/mlx_diffuser
+repo_name: mlx_diffuser
 docs_dir: docs
 
 theme:

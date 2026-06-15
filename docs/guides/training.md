@@ -4,9 +4,9 @@
 loop. It works for unconditional and class-conditional models.
 
 ```python
-from mlx_diffusion import DiT, DiTConfig, DiffusionTrainer
-from mlx_diffusion.schedulers import FlowMatchEulerScheduler
-from mlx_diffusion.training import batch_iterator, min_snr_weights
+from mlx_diffuser import DiT, DiTConfig, DiffusionTrainer
+from mlx_diffuser.schedulers import FlowMatchEulerScheduler
+from mlx_diffuser.training import batch_iterator, min_snr_weights
 
 model = DiT(DiTConfig(in_channels=3, hidden_size=384, depth=12, num_heads=6, num_classes=10))
 trainer = DiffusionTrainer(

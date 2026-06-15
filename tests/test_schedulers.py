@@ -5,7 +5,7 @@ from __future__ import annotations
 import mlx.core as mx
 import pytest
 
-from mlx_diffusion.schedulers import (
+from mlx_diffuser.schedulers import (
     DDIMScheduler,
     DDPMScheduler,
     EulerDiscreteScheduler,
@@ -13,8 +13,8 @@ from mlx_diffusion.schedulers import (
     load_scheduler,
     make_betas,
 )
-from mlx_diffusion.schedulers.ddpm import DDPMConfig
-from mlx_diffusion.schedulers.flow_match_euler import FlowMatchConfig
+from mlx_diffuser.schedulers.ddpm import DDPMConfig
+from mlx_diffuser.schedulers.flow_match_euler import FlowMatchConfig
 
 SHAPE = (2, 4, 4, 3)
 

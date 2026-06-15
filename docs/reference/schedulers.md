@@ -1,13 +1,13 @@
 # Schedulers
 
-::: mlx_diffusion.schedulers.Scheduler
+::: mlx_diffuser.schedulers.Scheduler
 
-::: mlx_diffusion.schedulers.DDPMScheduler
+::: mlx_diffuser.schedulers.DDPMScheduler
 
-::: mlx_diffusion.schedulers.DDIMScheduler
+::: mlx_diffuser.schedulers.DDIMScheduler
 
-::: mlx_diffusion.schedulers.EulerDiscreteScheduler
+::: mlx_diffuser.schedulers.EulerDiscreteScheduler
 
-::: mlx_diffusion.schedulers.FlowMatchEulerScheduler
+::: mlx_diffuser.schedulers.FlowMatchEulerScheduler
 
-::: mlx_diffusion.schedulers.load_scheduler
+::: mlx_diffuser.schedulers.load_scheduler

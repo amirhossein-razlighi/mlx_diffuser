@@ -6,8 +6,8 @@ development requires Apple silicon.
 ## Setup
 
 ```bash
-git clone https://github.com/AmirHossein-razlighi/mlx_diffusion
-cd mlx_diffusion
+git clone https://github.com/AmirHossein-razlighi/mlx_diffuser
+cd mlx_diffuser
 uv sync --extra dev
 ```
 
@@ -37,7 +37,7 @@ models down so they run on CPU/GPU in milliseconds).
 
 ## Releasing (maintainers)
 
-1. Bump `__version__` in `src/mlx_diffusion/version.py`.
+1. Bump `__version__` in `src/mlx_diffuser/version.py`.
 2. Update `CHANGELOG.md`.
 3. Tag and push: `git tag v0.1.0 && git push --tags`.
 4. Publish a GitHub Release for the tag — the `Release` workflow builds and

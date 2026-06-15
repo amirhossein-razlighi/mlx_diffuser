@@ -5,12 +5,12 @@ from __future__ import annotations
 import mlx.core as mx
 import pytest
 
-from mlx_diffusion.layers import (
+from mlx_diffuser.layers import (
     Attention,
     get_2d_sincos_pos_embed,
     timestep_embedding,
 )
-from mlx_diffusion.models import DiT, DiTConfig
+from mlx_diffuser.models import DiT, DiTConfig
 
 
 def tiny_config(**overrides) -> DiTConfig:

@@ -45,7 +45,7 @@ def as_dtype(dtype: str | mx.Dtype | None) -> mx.Dtype | None:
 _LOG_LEVEL = os.environ.get("MLX_DIFFUSION_LOG", "INFO").upper()
 
 
-def get_logger(name: str = "mlx_diffusion") -> logging.Logger:
+def get_logger(name: str = "mlx_diffuser") -> logging.Logger:
     """Return a configured library logger (idempotent)."""
     logger = logging.getLogger(name)
     if not logger.handlers:

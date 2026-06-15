@@ -4,9 +4,9 @@ Low-rank adapters let you fine-tune a large model on a Mac by training a tiny se
 of extra weights while the base stays frozen.
 
 ```python
-from mlx_diffusion import DiT, DiffusionTrainer, inject_lora, save_lora, load_lora, merge_lora
-from mlx_diffusion.schedulers import FlowMatchEulerScheduler
-from mlx_diffusion.training import batch_iterator
+from mlx_diffuser import DiT, DiffusionTrainer, inject_lora, save_lora, load_lora, merge_lora
+from mlx_diffuser.schedulers import FlowMatchEulerScheduler
+from mlx_diffuser.training import batch_iterator
 
 model = DiT.from_pretrained("my-model")
 n = inject_lora(model, rank=8, alpha=16)     # base frozen; only adapters trainable

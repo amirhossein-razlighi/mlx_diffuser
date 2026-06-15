@@ -5,11 +5,11 @@ from __future__ import annotations
 import mlx.core as mx
 from mlx.utils import tree_flatten, tree_map
 
-from mlx_diffusion.lora import inject_lora, load_lora, merge_lora, save_lora
-from mlx_diffusion.lora.lora import LoRALinear
-from mlx_diffusion.models import DiT, DiTConfig
-from mlx_diffusion.schedulers import FlowMatchEulerScheduler
-from mlx_diffusion.training import DiffusionTrainer
+from mlx_diffuser.lora import inject_lora, load_lora, merge_lora, save_lora
+from mlx_diffuser.lora.lora import LoRALinear
+from mlx_diffuser.models import DiT, DiTConfig
+from mlx_diffuser.schedulers import FlowMatchEulerScheduler
+from mlx_diffuser.training import DiffusionTrainer
 
 
 def build() -> DiT:

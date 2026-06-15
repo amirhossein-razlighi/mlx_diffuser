@@ -13,10 +13,10 @@ import time
 
 import mlx.core as mx
 
-from mlx_diffusion.models import DiT, DiTConfig
-from mlx_diffusion.perf import memory_report, reset_peak_memory
-from mlx_diffusion.pipelines import ClassConditionalPipeline
-from mlx_diffusion.schedulers import FlowMatchEulerScheduler
+from mlx_diffuser.models import DiT, DiTConfig
+from mlx_diffuser.perf import memory_report, reset_peak_memory
+from mlx_diffuser.pipelines import ClassConditionalPipeline
+from mlx_diffuser.schedulers import FlowMatchEulerScheduler
 
 
 def run(pipe, labels, *, size, steps, compile, warmup=1, iters=3) -> float:

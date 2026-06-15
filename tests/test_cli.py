@@ -6,10 +6,10 @@ import mlx.core as mx
 import numpy as np
 import pytest
 
-from mlx_diffusion.cli import build_parser, main
-from mlx_diffusion.models import DiT, DiTConfig
-from mlx_diffusion.pipelines import ClassConditionalPipeline
-from mlx_diffusion.schedulers import FlowMatchEulerScheduler
+from mlx_diffuser.cli import build_parser, main
+from mlx_diffuser.models import DiT, DiTConfig
+from mlx_diffuser.pipelines import ClassConditionalPipeline
+from mlx_diffuser.schedulers import FlowMatchEulerScheduler
 
 PIL = pytest.importorskip("PIL")
 from PIL import Image  # noqa: E402

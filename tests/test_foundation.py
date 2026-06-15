@@ -8,10 +8,10 @@ import mlx.core as mx
 import mlx.nn as nn
 import pytest
 
-import mlx_diffusion
-from mlx_diffusion.configuration import Config
-from mlx_diffusion.modeling import ModelMixin
-from mlx_diffusion.utils import as_dtype, seed_everything, to_array, to_pil
+import mlx_diffuser
+from mlx_diffuser.configuration import Config
+from mlx_diffuser.modeling import ModelMixin
+from mlx_diffuser.utils import as_dtype, seed_everything, to_array, to_pil
 
 
 @dataclasses.dataclass
@@ -33,8 +33,8 @@ class _TinyModel(ModelMixin):
 
 
 def test_version_exposed():
-    assert isinstance(mlx_diffusion.__version__, str)
-    assert mlx_diffusion.__version__.count(".") >= 2
+    assert isinstance(mlx_diffuser.__version__, str)
+    assert mlx_diffuser.__version__.count(".") >= 2
 
 
 def test_config_roundtrip(tmp_path):

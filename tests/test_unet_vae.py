@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import mlx.core as mx
 
-from mlx_diffusion.models import AutoencoderKL, AutoencoderKLConfig, UNet2D, UNet2DConfig
+from mlx_diffuser.models import AutoencoderKL, AutoencoderKLConfig, UNet2D, UNet2DConfig
 
 
 def tiny_unet(**kw) -> UNet2DConfig:

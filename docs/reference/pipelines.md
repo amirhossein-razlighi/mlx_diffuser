@@ -1,5 +1,5 @@
 # Pipelines
 
-::: mlx_diffusion.pipelines.DiffusionPipeline
+::: mlx_diffuser.pipelines.DiffusionPipeline
 
-::: mlx_diffusion.pipelines.ClassConditionalPipeline
+::: mlx_diffuser.pipelines.ClassConditionalPipeline

@@ -3,7 +3,7 @@
 ## Generate
 
 ```python
-from mlx_diffusion import DiffusionPipeline
+from mlx_diffuser import DiffusionPipeline
 
 pipe = DiffusionPipeline.from_pretrained("path/or/hub-id", dtype="bf16", quantize=4)
 images = pipe([1, 2, 3], num_inference_steps=50, guidance_scale=4.0, seed=0)
@@ -13,7 +13,7 @@ images = pipe([1, 2, 3], num_inference_steps=50, guidance_scale=4.0, seed=0)
 Convert to PIL:
 
 ```python
-from mlx_diffusion import to_pil
+from mlx_diffuser import to_pil
 to_pil(images[0]).save("sample.png")
 ```
 
@@ -21,9 +21,9 @@ to_pil(images[0]).save("sample.png")
 
 ```python
 import mlx.core as mx
-from mlx_diffusion import DiT, DiTConfig, DiffusionTrainer
-from mlx_diffusion.schedulers import FlowMatchEulerScheduler
-from mlx_diffusion.training import batch_iterator
+from mlx_diffuser import DiT, DiTConfig, DiffusionTrainer
+from mlx_diffuser.schedulers import FlowMatchEulerScheduler
+from mlx_diffuser.training import batch_iterator
 
 data = mx.random.normal((512, 32, 32, 3))  # your images in [-1, 1], channels-last
 
@@ -38,9 +38,9 @@ Class-conditional training? Set `num_classes` and pass `(images, labels)` batche
 ## Fine-tune with LoRA
 
 ```python
-from mlx_diffusion import DiT, DiffusionTrainer, inject_lora, save_lora
-from mlx_diffusion.schedulers import FlowMatchEulerScheduler
-from mlx_diffusion.training import batch_iterator
+from mlx_diffuser import DiT, DiffusionTrainer, inject_lora, save_lora
+from mlx_diffuser.schedulers import FlowMatchEulerScheduler
+from mlx_diffuser.training import batch_iterator
 
 model = DiT.from_pretrained("my-model")
 inject_lora(model, rank=8)        # base frozen; only adapters train

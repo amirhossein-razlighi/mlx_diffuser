@@ -11,7 +11,7 @@ Pairs naturally with flow-matching; supports optional class conditioning with
 classifier-free-guidance dropout.
 
 ```python
-from mlx_diffusion import DiT, DiTConfig
+from mlx_diffuser import DiT, DiTConfig
 
 model = DiT(DiTConfig(
     in_channels=3, patch_size=2, hidden_size=384, depth=12, num_heads=6,
@@ -30,7 +30,7 @@ connections, per-level attention, and optional cross-attention for text
 conditioning:
 
 ```python
-from mlx_diffusion import UNet2D, UNet2DConfig
+from mlx_diffuser import UNet2D, UNet2DConfig
 
 unet = UNet2D(UNet2DConfig(
     in_channels=4, out_channels=4,
@@ -45,7 +45,7 @@ out = unet(latents, t, context=text_embeddings)
 Maps images ↔ latents for latent diffusion:
 
 ```python
-from mlx_diffusion import AutoencoderKL, AutoencoderKLConfig
+from mlx_diffuser import AutoencoderKL, AutoencoderKLConfig
 
 vae = AutoencoderKL(AutoencoderKLConfig(in_channels=3, latent_channels=4))
 posterior = vae.encode(image)             # DiagonalGaussian

@@ -64,7 +64,7 @@ what lets a researcher swap one axis without touching the other.
 ## 3. Package layout
 
 ```
-src/mlx_diffusion/
+src/mlx_diffuser/
   __init__.py            # curated top-level exports
   configuration.py       # Config: dataclass-ish JSON config base
   modeling.py            # ModelMixin: from_pretrained/save_pretrained (+safetensors)

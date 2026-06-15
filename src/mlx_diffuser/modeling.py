@@ -2,7 +2,7 @@
 
 A model is an ``mlx.nn.Module`` that:
 
-* takes its :class:`~mlx_diffusion.configuration.Config` as the sole ``__init__`` arg,
+* takes its :class:`~mlx_diffuser.configuration.Config` as the sole ``__init__`` arg,
 * declares ``config_class`` so it can be rebuilt from ``config.json``,
 * stores that config on ``self.config``.
 

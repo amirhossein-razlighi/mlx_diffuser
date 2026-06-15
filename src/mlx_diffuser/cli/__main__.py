@@ -1,4 +1,4 @@
-"""Enable ``python -m mlx_diffusion.cli``."""
+"""Enable ``python -m mlx_diffuser.cli``."""
 
 from . import main
 

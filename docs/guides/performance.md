@@ -8,7 +8,7 @@ Sampling and training steps are compiled. For custom inference loops, compile th
 model once (per-step shapes are constant, so one graph is reused):
 
 ```python
-from mlx_diffusion.perf import compile_model
+from mlx_diffuser.perf import compile_model
 fast_model = compile_model(model)        # params passed as implicit inputs
 ```
 
@@ -23,7 +23,7 @@ Weight-only 4/8-bit quantization at load time fits large models in unified memor
 ```python
 model = DiT.from_pretrained("my-model", quantize=4)         # 4-bit
 # or quantize an in-memory model:
-from mlx_diffusion import quantize_module
+from mlx_diffuser import quantize_module
 quantize_module(model, bits=8, group_size=64)
 ```
 
@@ -35,7 +35,7 @@ accumulate in higher precision internally, so no manual up/down-casting is neede
 ## Unified memory
 
 ```python
-from mlx_diffusion.perf import memory_report, set_memory_limit, clear_cache
+from mlx_diffuser.perf import memory_report, set_memory_limit, clear_cache
 
 set_memory_limit(24)          # soft cap, GB
 print(memory_report())        # {'active_gb': ..., 'peak_gb': ..., 'cache_gb': ...}
