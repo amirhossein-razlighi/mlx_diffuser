@@ -4,7 +4,15 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
-## [0.1.0] — Unreleased
+## [0.1.1] — 2026-06-15
+
+### Changed
+
+- Renamed distribution and Python package from `mlx-diffusion`/`mlx_diffusion` to
+  `mlx-diffuser`/`mlx_diffuser` to match the PyPI project name.
+- Added README badges (PyPI version, downloads, Python versions, license, docs).
+
+## [0.1.0] — 2026-06-15
 
 First public release.
 
