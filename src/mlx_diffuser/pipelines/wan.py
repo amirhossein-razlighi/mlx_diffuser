@@ -165,7 +165,8 @@ class WanPipeline:
         self.scheduler.set_timesteps(num_inference_steps)
         steps = self.scheduler.timesteps
         assert steps is not None
-        for i, t in enumerate(steps):
+        bar = _DenoiseProgress(len(steps), enabled=progress)
+        for t in steps:
             ts = t * 1000.0
             if use_cfg:
                 x2 = mx.concatenate([latents, latents], axis=0)
@@ -176,15 +177,54 @@ class WanPipeline:
                 v = self.transformer(latents, mx.broadcast_to(ts, (1,)), context, cache=cache)
             latents = self.scheduler.step(v, t, latents)
             mx.eval(latents)
-            if progress:
-                print(f"  step {i + 1}/{len(steps)}", end="\r")
-        if progress and cache.enabled:
-            print(f"\n  fbcache: skipped {cache.skipped}/{cache.steps} full forwards")
+            bar.update(cache)
+        bar.close()
 
         z = self.vae.denormalize_latents(latents).astype(mx.float32)
         video = self.vae.decode(z)
         mx.eval(video)
         return video
+
+
+class _DenoiseProgress:
+    """A denoising-loop progress bar: tqdm if available, else a plain ``\\r`` line.
+
+    Shows steps/s and ETA, plus the live First-Block-Cache hit rate when caching is
+    on (e.g. ``cached=8/20``).
+    """
+
+    def __init__(self, total: int, enabled: bool):
+        self.enabled = enabled
+        self.total = total
+        self.done = 0
+        self.bar = None
+        if not enabled:
+            return
+        try:
+            from tqdm import tqdm
+
+            self.bar = tqdm(total=total, desc="denoising", unit="step")
+        except ImportError:  # pragma: no cover - tqdm ships with transformers
+            pass
+
+    def update(self, cache: FirstBlockCache | None) -> None:
+        if not self.enabled:
+            return
+        postfix = {"cached": f"{cache.skipped}/{cache.steps}"} if cache is not None else {}
+        self.done += 1
+        if self.bar is not None:
+            if postfix:
+                self.bar.set_postfix(postfix, refresh=False)
+            self.bar.update(1)
+        else:
+            extra = f"  cached {postfix['cached']}" if postfix else ""
+            print(f"  step {self.done}/{self.total}{extra}", end="\r", flush=True)
+
+    def close(self) -> None:
+        if self.bar is not None:
+            self.bar.close()
+        elif self.enabled:
+            print()
 
 
 def _load_tokenizer(folder: Path):
