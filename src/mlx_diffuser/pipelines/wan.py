@@ -146,15 +146,15 @@ class WanPipeline:
         if height % 8 or width % 8:
             raise ValueError("height and width must be multiples of 8.")
 
+        use_cfg = bool(guidance_scale) and guidance_scale > 1.0
         prompt_embeds = self.encode_text(prompt)
-        use_cfg = guidance_scale and guidance_scale > 1.0
-        negative_embeds = self.encode_text(negative_prompt) if use_cfg else None
+        # Batch the conditional + unconditional CFG passes into one forward.
+        if use_cfg:
+            context = mx.concatenate([prompt_embeds, self.encode_text(negative_prompt)], axis=0)
+        else:
+            context = prompt_embeds
         if release_text_encoder:
             self.release_text_encoder()
-        # Batch the conditional + unconditional CFG passes into one forward.
-        context = (
-            mx.concatenate([prompt_embeds, negative_embeds], axis=0) if use_cfg else prompt_embeds
-        )
 
         latent_frames = (num_frames - 1) // 4 + 1
         lh, lw = height // 8, width // 8
