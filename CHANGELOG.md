@@ -20,14 +20,28 @@ All notable changes to this project are documented here. The format is based on
 - **Layers** — `rope_3d_freqs` (factorized 3D rotary embeddings), `PatchEmbed3D`,
   `VideoDiTBlock`, and causal 3D VAE blocks (`CausalConv3d`, `ResnetBlock3D`,
   `Downsample3D`, `Upsample3D`); `Attention` now accepts an optional RoPE pair.
-- **Example** — `examples/text_to_video.py` generates a clip and saves an animated
-  GIF, with a `--quantize {2,3,4,6,8}` low-memory path that fits large video
-  models on a 16 GB Mac.
+- **WAN 2.1 (real checkpoints)** — faithful MLX ports that load the official
+  weights, plus a checkpoint-converter subsystem:
+  - `AutoencoderKLWan` (causal-3D streaming VAE), `WanTransformer3DModel` (the DiT,
+    with interleaved 3D-RoPE, qk-RMSNorm, and shared-time/per-block modulation),
+    and `UMT5EncoderModel` (the umT5-xxl text encoder, loadable 4-bit).
+  - `mlx_diffuser.converters`: a registry + `Converter` that turns a diffusers
+    component folder into the matching MLX model, reading safetensors natively
+    (no PyTorch) and validating that every parameter is covered. `convert()` can
+    cast dtype and weight-quantize on the fly (memory-safe via lazy mmap).
+  - `WanPipeline.from_diffusers` runs the whole text-to-video path — tokenize,
+    umT5 encode, flow-matching denoise with CFG, decode — natively in MLX; the
+    1.3B model fits in ~6 GB (umT5 4-bit + DiT bf16 + VAE).
+- **Example** — `examples/text_to_video.py` (from-scratch arch, `--quantize`
+  low-memory path) and `examples/wan_text_to_video.py` (download + convert + run
+  the real WAN 2.1 weights), both saving an animated GIF.
 
 ### Notes
 
-- Video architectures are implemented from scratch; loading official pretrained
-  LTX-Video / WAN weights requires a separate checkpoint converter (not included).
+- The generic `VideoDiT` / `AutoencoderKLVideo` are from-scratch architectures for
+  training; the `WanTransformer3DModel` / `AutoencoderKLWan` / `UMT5EncoderModel`
+  ports are weight-compatible with the official WAN 2.1 release and verified
+  numerically against the reference (`scripts/check_wan_*.py`).
 
 ## [0.1.1] — 2026-06-15
 

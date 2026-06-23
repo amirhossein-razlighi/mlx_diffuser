@@ -52,6 +52,7 @@ nav:
   - Concepts: concepts.md
   - Guides:
       - Models: guides/models.md
+      - WAN 2.1 text-to-video: guides/wan.md
       - Schedulers: guides/schedulers.md
       - Training: guides/training.md
       - LoRA fine-tuning: guides/lora.md
