@@ -69,7 +69,9 @@ class TextToVideoPipeline(DiffusionPipeline):
             prompt_embeds: ``(B, L, D)`` per-token text embeddings.
             negative_embeds: ``(B, L, D)`` for the unconditional branch (CFG);
                 defaults to zeros when guidance is enabled.
-            num_frames/height/width: output video dimensions (in pixels/frames).
+            num_frames: number of output frames.
+            height: output height in pixels.
+            width: output width in pixels.
             decode: if ``False``, return raw latents instead of pixels.
 
         Returns:

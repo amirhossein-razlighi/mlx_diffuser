@@ -13,6 +13,22 @@ modalities — from one small, readable codebase.
 
 ---
 
+<table>
+<tr>
+<td align="center"><img src="docs/assets/wan_fox.gif" width="240" alt="fox"></td>
+<td align="center"><img src="docs/assets/wan_panda_surf.gif" width="240" alt="panda surfing"></td>
+</tr>
+<tr>
+<td align="center"><sub><em>"a red fox trotting through snow, cinematic"</em></sub></td>
+<td align="center"><sub><em>"a panda surfing a big wave at sunset, cinematic"</em></sub></td>
+</tr>
+</table>
+
+**WAN 2.1 (1.3B) text-to-video, generated end-to-end in MLX on Apple silicon** — see the
+[WAN guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/wan/).
+
+---
+
 If you know PyTorch and 🤗 `diffusers`, you already know this library:
 `Model.from_pretrained(...)`, `pipe(...)`, `nn.Module` everywhere. The difference
 is underneath — unified memory, `mx.compile`, fused Metal kernels, and built-in

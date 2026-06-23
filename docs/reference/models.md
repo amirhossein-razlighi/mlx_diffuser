@@ -21,3 +21,15 @@
 ::: mlx_diffuser.models.AutoencoderKLVideo
 
 ::: mlx_diffuser.models.AutoencoderKLVideoConfig
+
+## WAN 2.1 (weight-compatible ports)
+
+::: mlx_diffuser.models.WanTransformer3DModel
+
+::: mlx_diffuser.models.WanTransformerConfig
+
+::: mlx_diffuser.models.AutoencoderKLWan
+
+::: mlx_diffuser.models.AutoencoderKLWanConfig
+
+::: mlx_diffuser.models.umt5.UMT5EncoderModel

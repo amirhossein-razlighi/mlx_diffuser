@@ -5,6 +5,12 @@ text-to-video model, so you can run the official checkpoint natively in MLX.
 Everything — loading, conversion, text encoding, denoising, and decoding — happens
 on Metal, and the 1.3B model fits in **~6 GB** of unified memory.
 
+<p align="center">
+  <img src="../../assets/wan_fox.gif" width="240" alt="fox">
+  <img src="../../assets/wan_panda_surf.gif" width="240" alt="panda surfing">
+  <br><sub><em>"a red fox trotting through snow" · "a panda surfing a big wave at sunset" — both 256px, generated on a Mac</em></sub>
+</p>
+
 ## Components
 
 | Model | Role |
