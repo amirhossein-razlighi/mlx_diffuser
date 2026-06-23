@@ -54,10 +54,15 @@ class FlowMatchEulerScheduler(Scheduler):
     # --- sampling ---------------------------------------------------------
     def set_timesteps(self, num_inference_steps: int) -> None:
         self.num_inference_steps = num_inference_steps
-        sigmas = mx.linspace(1.0, 0.0, num_inference_steps + 1)
+        # Match the SD3/Flux/WAN flow convention: space sigmas over
+        # ``[1, 1/num_train_timesteps]`` (so the last model evaluation is at very
+        # low noise), apply the resolution shift, then append a final sigma of 0.
+        # Sampling at a coarse final sigma instead leaves the sample under-denoised.
+        sigma_min = 1.0 / self.config.num_train_timesteps
+        sigmas = mx.linspace(1.0, sigma_min, num_inference_steps)
         sigmas = self._shift(sigmas)
-        self.sigmas = sigmas
-        self.timesteps = sigmas[:-1]
+        self.sigmas = mx.concatenate([sigmas, mx.zeros((1,))])
+        self.timesteps = sigmas
         self._step_index = 0
 
     def step(

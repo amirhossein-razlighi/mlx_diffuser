@@ -104,7 +104,7 @@ class UMT5Attention(nn.Module):
         k = self.k(x).reshape(b, lq, self.n_heads, self.d_kv).transpose(0, 2, 1, 3)
         v = self.v(x).reshape(b, lq, self.n_heads, self.d_kv).transpose(0, 2, 1, 3)
         # T5 uses no 1/sqrt(d) scaling; the relative-position bias is the additive mask.
-        out = mx.fast.scaled_dot_product_attention(q, k, v, scale=1.0, mask=bias)
+        out = mx.fast.scaled_dot_product_attention(q, k, v, scale=1.0, mask=bias.astype(q.dtype))
         out = out.transpose(0, 2, 1, 3).reshape(b, lq, self.n_heads * self.d_kv)
         return self.o(out)
 
@@ -181,7 +181,10 @@ class UMT5EncoderModel(ModelMixin[UMT5Config]):
 
         ``attention_mask`` ``(B, L)`` with 1 for real tokens, 0 for padding.
         """
-        x = self.shared(input_ids)
+        # Run activations in fp32: T5/umT5 activations routinely exceed the fp16
+        # range, so a low-precision compute path overflows to inf/NaN on some
+        # prompts. The (quantized) weights stay small; only the activations are fp32.
+        x = self.shared(input_ids).astype(mx.float32)
         mask = None
         if attention_mask is not None:
             neg = (1.0 - attention_mask.astype(mx.float32)) * -1e9

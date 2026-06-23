@@ -24,8 +24,9 @@ from ..models.umt5 import UMT5EncoderModel
 from ..models.wan_transformer import WanTransformer3DModel
 from ..schedulers.flow_match_euler import FlowMatchConfig, FlowMatchEulerScheduler
 
-# WAN's text encoder is conditioned on a fixed maximum prompt length.
-MAX_PROMPT_TOKENS = 512
+# WAN 2.1 T2V is trained on prompts padded to a fixed length; the transformer's
+# cross-attention expects that token budget. (diffusers' WanPipeline default.)
+MAX_PROMPT_TOKENS = 226
 
 
 class WanPipeline:
@@ -69,16 +70,18 @@ class WanPipeline:
 
         folder = Path(folder)
         te_source = Path(text_encoder) if text_encoder is not None else folder / "text_encoder"
+        # Convert the large text encoder first (quantizing while little else is
+        # resident), then the transformer, to keep the peak conversion memory down.
         vae = cast(AutoencoderKLWan, get_converter("AutoencoderKLWan").convert(folder / "vae"))
+        text_encoder_model = cast(
+            UMT5EncoderModel,
+            get_converter("UMT5EncoderModel").convert(te_source, quantize=quantize_text),
+        )
         transformer = cast(
             WanTransformer3DModel,
             get_converter("WanTransformer3DModel").convert(
                 folder / "transformer", dtype=transformer_dtype, quantize=quantize_transformer
             ),
-        )
-        text_encoder_model = cast(
-            UMT5EncoderModel,
-            get_converter("UMT5EncoderModel").convert(te_source, quantize=quantize_text),
         )
         tokenizer = _load_tokenizer(folder / "tokenizer")
         scheduler = FlowMatchEulerScheduler(FlowMatchConfig(shift=shift))
@@ -91,6 +94,7 @@ class WanPipeline:
             raise RuntimeError("Text encoder was released; re-load the pipeline to encode.")
         enc = self.tokenizer(
             prompt,
+            padding="max_length",
             max_length=MAX_PROMPT_TOKENS,
             truncation=True,
             return_tensors="np",
@@ -98,6 +102,10 @@ class WanPipeline:
         ids = mx.array(enc["input_ids"].astype("int32"))
         mask = mx.array(enc["attention_mask"].astype("int32"))
         embeds = self.text_encoder(ids, mask)
+        # Zero the padded positions so the transformer's cross-attention sees the
+        # same fixed token budget it was trained on. Without the padding the text
+        # attention is far too concentrated and the video collapses to a flat frame.
+        embeds = embeds * mask[..., None].astype(embeds.dtype)
         mx.eval(embeds)
         return embeds
 
