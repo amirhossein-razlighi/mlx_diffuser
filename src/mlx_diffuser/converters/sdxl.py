@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import mlx.core as mx
 
+from ..models.autoencoder_kl_sd import AutoencoderKLSD, AutoencoderKLSDConfig
 from ..models.clip_text import CLIPTextConfig, CLIPTextModel
-from .base import Converter, register_converter
+from .base import Converter, convert_conv_weight, register_converter
 
 
 class _CLIPConverter(Converter):
@@ -49,3 +50,26 @@ class CLIPTextModelConverter(_CLIPConverter):
 class CLIPTextModelWithProjectionConverter(_CLIPConverter):
     source_class = "CLIPTextModelWithProjection"
     with_projection = True
+
+
+@register_converter
+class SDVAEConverter(Converter):
+    source_class = "AutoencoderKL"
+
+    def build_config(self, hf_config: dict) -> AutoencoderKLSDConfig:
+        return AutoencoderKLSDConfig(
+            in_channels=hf_config["in_channels"],
+            out_channels=hf_config["out_channels"],
+            latent_channels=hf_config["latent_channels"],
+            block_out_channels=tuple(hf_config["block_out_channels"]),
+            layers_per_block=hf_config["layers_per_block"],
+            norm_groups=hf_config.get("norm_num_groups", 32),
+            scaling_factor=hf_config.get("scaling_factor", 0.18215),
+        )
+
+    def build_model(self, hf_config: dict) -> AutoencoderKLSD:
+        return AutoencoderKLSD(self.build_config(hf_config))
+
+    def convert_weights(self, weights: dict[str, mx.array], hf_config: dict) -> dict[str, mx.array]:
+        # Conv kernels -> channels-last; Linear/GroupNorm weights already match.
+        return {k: (convert_conv_weight(v) if v.ndim == 4 else v) for k, v in weights.items()}

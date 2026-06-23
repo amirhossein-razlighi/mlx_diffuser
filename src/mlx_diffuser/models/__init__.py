@@ -1,6 +1,7 @@
 """Networks: config-driven nn.Modules that predict the diffusion/flow target."""
 
 from .autoencoder_kl import AutoencoderKL, AutoencoderKLConfig, DiagonalGaussian
+from .autoencoder_kl_sd import AutoencoderKLSD, AutoencoderKLSDConfig
 from .autoencoder_kl_video import AutoencoderKLVideo, AutoencoderKLVideoConfig
 from .autoencoder_kl_wan import AutoencoderKLWan, AutoencoderKLWanConfig
 from .clip_text import CLIPTextConfig, CLIPTextModel
@@ -27,4 +28,6 @@ __all__ = [
     "WanTransformerConfig",
     "CLIPTextModel",
     "CLIPTextConfig",
+    "AutoencoderKLSD",
+    "AutoencoderKLSDConfig",
 ]
