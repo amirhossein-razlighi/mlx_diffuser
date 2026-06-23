@@ -47,14 +47,16 @@ class ResnetBlock3D(nn.Module):
         self, in_channels: int, out_channels: int, temb_dim: int | None = None, groups: int = 32
     ):
         super().__init__()
-        self.norm1 = nn.GroupNorm(valid_groups(in_channels, groups), in_channels, pytorch_compatible=True)
+        self.norm1 = nn.GroupNorm(
+            valid_groups(in_channels, groups), in_channels, pytorch_compatible=True
+        )
         self.conv1 = CausalConv3d(in_channels, out_channels)
         self.time_proj = nn.Linear(temb_dim, out_channels) if temb_dim else None
-        self.norm2 = nn.GroupNorm(valid_groups(out_channels, groups), out_channels, pytorch_compatible=True)
-        self.conv2 = CausalConv3d(out_channels, out_channels)
-        self.skip = (
-            nn.Conv3d(in_channels, out_channels, 1) if in_channels != out_channels else None
+        self.norm2 = nn.GroupNorm(
+            valid_groups(out_channels, groups), out_channels, pytorch_compatible=True
         )
+        self.conv2 = CausalConv3d(out_channels, out_channels)
+        self.skip = nn.Conv3d(in_channels, out_channels, 1) if in_channels != out_channels else None
 
     def __call__(self, x: mx.array, temb: mx.array | None = None) -> mx.array:
         h = self.conv1(nn.silu(self.norm1(x)))

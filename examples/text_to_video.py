@@ -18,7 +18,6 @@ real architecture shapes.
 from __future__ import annotations
 
 import argparse
-import tempfile
 import time
 
 import mlx.core as mx
@@ -69,9 +68,7 @@ def build_pipeline(hidden: int, depth: int, quantize: int | None) -> TextToVideo
 def save_gif(video: mx.array, path: str, fps: int = 8) -> None:
     """Save ``(T, H, W, C)`` in [-1, 1] as an animated GIF."""
     frames = [to_pil(video[i]) for i in range(video.shape[0])]
-    frames[0].save(
-        path, save_all=True, append_images=frames[1:], duration=int(1000 / fps), loop=0
-    )
+    frames[0].save(path, save_all=True, append_images=frames[1:], duration=int(1000 / fps), loop=0)
 
 
 def main() -> None:

@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] — 2026-06-23
+
+### Added
+
+- **Video models** — text-to-video support in the LTX-Video / WAN style:
+  - `VideoDiT`, a spatiotemporal diffusion transformer (3D patch embedding,
+    factorized 3D-RoPE self-attention, adaLN-Zero timestep conditioning, gated
+    text cross-attention). Ships `VideoDiTConfig` presets matching the published
+    architectures — `wan_t2v_1_3b()`, `wan_t2v_14b()`, and `ltx_video()`.
+  - `AutoencoderKLVideo`, a causal-3D-convolution VAE that compresses video both
+    spatially and temporally into latents for latent-space video diffusion.
+  - `TextToVideoPipeline`, wiring the transformer, video VAE, and flow-matching
+    scheduler with classifier-free guidance over precomputed text embeddings.
+- **Layers** — `rope_3d_freqs` (factorized 3D rotary embeddings), `PatchEmbed3D`,
+  `VideoDiTBlock`, and causal 3D VAE blocks (`CausalConv3d`, `ResnetBlock3D`,
+  `Downsample3D`, `Upsample3D`); `Attention` now accepts an optional RoPE pair.
+- **Example** — `examples/text_to_video.py` generates a clip and saves an animated
+  GIF, with a `--quantize {2,3,4,6,8}` low-memory path that fits large video
+  models on a 16 GB Mac.
+
+### Notes
+
+- Video architectures are implemented from scratch; loading official pretrained
+  LTX-Video / WAN weights requires a separate checkpoint converter (not included).
+
 ## [0.1.1] — 2026-06-15
 
 ### Changed

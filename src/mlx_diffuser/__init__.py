@@ -8,13 +8,17 @@ from .modeling import ModelMixin
 from .models import (
     AutoencoderKL,
     AutoencoderKLConfig,
+    AutoencoderKLVideo,
+    AutoencoderKLVideoConfig,
     DiT,
     DiTConfig,
     UNet2D,
     UNet2DConfig,
+    VideoDiT,
+    VideoDiTConfig,
 )
 from .perf import compile_model, memory_report, set_memory_limit
-from .pipelines import ClassConditionalPipeline, DiffusionPipeline
+from .pipelines import ClassConditionalPipeline, DiffusionPipeline, TextToVideoPipeline
 from .quantization import quantize_module
 from .schedulers import (
     DDIMScheduler,
@@ -37,8 +41,13 @@ __all__ = [
     "UNet2DConfig",
     "AutoencoderKL",
     "AutoencoderKLConfig",
+    "VideoDiT",
+    "VideoDiTConfig",
+    "AutoencoderKLVideo",
+    "AutoencoderKLVideoConfig",
     "DiffusionPipeline",
     "ClassConditionalPipeline",
+    "TextToVideoPipeline",
     "DiffusionTrainer",
     "EMA",
     "inject_lora",

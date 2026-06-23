@@ -39,7 +39,13 @@ class TextToVideoPipeline(DiffusionPipeline):
                 f"num_frames must be divisible by {tc} and height/width by {sp} "
                 f"(got {num_frames}, {height}, {width})."
             )
-        return (batch, num_frames // tc, height // sp, width // sp, self.transformer.config.in_channels)
+        return (
+            batch,
+            num_frames // tc,
+            height // sp,
+            width // sp,
+            self.transformer.config.in_channels,
+        )
 
     def __call__(
         self,
@@ -85,6 +91,7 @@ class TextToVideoPipeline(DiffusionPipeline):
         def predict(scaled: mx.array, t: mx.array) -> mx.array:
             tb = mx.ones((b,)) * t
             if use_cfg:
+                assert negative_embeds is not None  # set above when CFG is enabled
                 x2 = mx.concatenate([scaled, scaled], axis=0)
                 t2 = mx.concatenate([tb, tb], axis=0)
                 ctx = mx.concatenate([prompt_embeds, negative_embeds], axis=0)

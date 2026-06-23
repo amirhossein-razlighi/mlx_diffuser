@@ -58,13 +58,12 @@ class VideoDiTBlock(nn.Module):
         self.attn = Attention(dim, num_heads, qk_norm=qk_norm)
         self.modulation = AdaLNModulation(cond_dim, dim, n=6)
 
+        self.norm_cross: nn.LayerNorm | None = None
+        self.cross_attn: Attention | None = None
         if cross_attn_dim is not None:
             self.norm_cross = nn.LayerNorm(dim, affine=False)
             self.cross_attn = Attention(dim, num_heads, context_dim=cross_attn_dim, qk_norm=qk_norm)
             self.cross_gate = mx.zeros((dim,))  # zero-init -> identity at start
-        else:
-            self.norm_cross = None
-            self.cross_attn = None
 
         self.norm2 = nn.LayerNorm(dim, affine=False)
         self.mlp = FeedForward(dim, mlp_ratio)

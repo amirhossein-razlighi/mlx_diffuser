@@ -13,3 +13,11 @@
 ::: mlx_diffuser.models.AutoencoderKL
 
 ::: mlx_diffuser.models.AutoencoderKLConfig
+
+::: mlx_diffuser.models.VideoDiT
+
+::: mlx_diffuser.models.VideoDiTConfig
+
+::: mlx_diffuser.models.AutoencoderKLVideo
+
+::: mlx_diffuser.models.AutoencoderKLVideoConfig

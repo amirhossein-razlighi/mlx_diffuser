@@ -67,10 +67,14 @@ class _Encoder(nn.Module):
             for _ in range(c.layers_per_block):
                 self.resnets.append(ResnetBlock3D(prev, ch, None, c.norm_groups))
                 prev = ch
-            self.downsamplers.append(Downsample3D(ch, _is_temporal_down(i, c)) if i < n - 1 else None)
+            self.downsamplers.append(
+                Downsample3D(ch, _is_temporal_down(i, c)) if i < n - 1 else None
+            )
         self.mid_resnet1 = ResnetBlock3D(prev, prev, None, c.norm_groups)
         self.mid_resnet2 = ResnetBlock3D(prev, prev, None, c.norm_groups)
-        self.norm_out = nn.GroupNorm(valid_groups(prev, c.norm_groups), prev, pytorch_compatible=True)
+        self.norm_out = nn.GroupNorm(
+            valid_groups(prev, c.norm_groups), prev, pytorch_compatible=True
+        )
         self.conv_out = CausalConv3d(prev, 2 * c.latent_channels)
         self._n = n
         self._lpb = c.layers_per_block
@@ -109,7 +113,9 @@ class _Decoder(nn.Module):
             # Upsample j inverts encoder downsample (n-2-j); temporal on the deepest first.
             temporal = j <= c.temporal_levels - 1
             self.upsamplers.append(Upsample3D(ch, temporal) if j < n - 1 else None)
-        self.norm_out = nn.GroupNorm(valid_groups(prev, c.norm_groups), prev, pytorch_compatible=True)
+        self.norm_out = nn.GroupNorm(
+            valid_groups(prev, c.norm_groups), prev, pytorch_compatible=True
+        )
         self.conv_out = CausalConv3d(prev, c.in_channels)
         self._n = n
         self._lpb = c.layers_per_block
