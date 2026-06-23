@@ -12,6 +12,7 @@ import mlx.core as mx
 
 from ..models.autoencoder_kl_sd import AutoencoderKLSD, AutoencoderKLSDConfig
 from ..models.clip_text import CLIPTextConfig, CLIPTextModel
+from ..models.unet_sdxl import SDXLUNet, SDXLUNetConfig
 from .base import Converter, convert_conv_weight, register_converter
 
 
@@ -72,4 +73,47 @@ class SDVAEConverter(Converter):
 
     def convert_weights(self, weights: dict[str, mx.array], hf_config: dict) -> dict[str, mx.array]:
         # Conv kernels -> channels-last; Linear/GroupNorm weights already match.
+        return {k: (convert_conv_weight(v) if v.ndim == 4 else v) for k, v in weights.items()}
+
+
+def _heads_from(hf_config: dict) -> tuple[int, ...]:
+    # SDXL stores the per-level head COUNT under attention_head_dim (legacy naming).
+    nah = hf_config.get("num_attention_heads") or hf_config["attention_head_dim"]
+    return (
+        tuple(nah)
+        if isinstance(nah, (list, tuple))
+        else (nah,) * len(hf_config["block_out_channels"])
+    )
+
+
+@register_converter
+class SDXLUNetConverter(Converter):
+    source_class = "UNet2DConditionModel"
+
+    def build_config(self, hf_config: dict) -> SDXLUNetConfig:
+        tlpb = hf_config["transformer_layers_per_block"]
+        boc = hf_config["block_out_channels"]
+        return SDXLUNetConfig(
+            in_channels=hf_config["in_channels"],
+            out_channels=hf_config["out_channels"],
+            block_out_channels=tuple(boc),
+            down_block_types=tuple(hf_config["down_block_types"]),
+            up_block_types=tuple(hf_config["up_block_types"]),
+            layers_per_block=hf_config["layers_per_block"],
+            transformer_layers_per_block=tuple(tlpb)
+            if isinstance(tlpb, (list, tuple))
+            else (tlpb,) * len(boc),
+            num_attention_heads=_heads_from(hf_config),
+            cross_attention_dim=hf_config["cross_attention_dim"],
+            addition_time_embed_dim=hf_config["addition_time_embed_dim"],
+            projection_class_embeddings_input_dim=hf_config[
+                "projection_class_embeddings_input_dim"
+            ],
+            norm_groups=hf_config.get("norm_num_groups", 32),
+        )
+
+    def build_model(self, hf_config: dict) -> SDXLUNet:
+        return SDXLUNet(self.build_config(hf_config))
+
+    def convert_weights(self, weights: dict[str, mx.array], hf_config: dict) -> dict[str, mx.array]:
         return {k: (convert_conv_weight(v) if v.ndim == 4 else v) for k, v in weights.items()}
