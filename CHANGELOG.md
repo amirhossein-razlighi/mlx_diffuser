@@ -35,6 +35,12 @@ All notable changes to this project are documented here. The format is based on
 - **Example** — `examples/text_to_video.py` (from-scratch arch, `--quantize`
   low-memory path) and `examples/wan_text_to_video.py` (download + convert + run
   the real WAN 2.1 weights), both saving an animated GIF.
+- **WAN speed/memory** — batched classifier-free guidance (one transformer call
+  per step) and `FirstBlockCache` (`cache_threshold`): reuses the cached residual of
+  later transformer blocks on steps where the first block barely changes (~2.2× at
+  256px with no visible quality change). 8-bit transformer weights
+  (`quantize_transformer=8`) halve the DiT's memory at cosine 0.99996 vs bf16.
+  `scripts/bench_wan.py` measures the hot path.
 
 ### Notes
 

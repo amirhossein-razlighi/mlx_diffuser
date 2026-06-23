@@ -63,6 +63,19 @@ def main() -> None:
     p.add_argument("--steps", type=int, default=30)
     p.add_argument("--guidance", type=float, default=5.0)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument(
+        "--cache",
+        type=float,
+        default=0.0,
+        help="First-Block Cache threshold (0=off/exact; 0.1~1.5x, 0.2~2.2x, no visible loss)",
+    )
+    p.add_argument(
+        "--quant-dit",
+        type=int,
+        default=None,
+        choices=[4, 8],
+        help="weight-quantize the transformer (8-bit ≈ half its memory, ~lossless)",
+    )
     p.add_argument("--out", type=str, default="wan.gif")
     args = p.parse_args()
 
@@ -72,7 +85,9 @@ def main() -> None:
 
     reset_peak_memory()
     print("loading + converting WAN 2.1 (umT5 4-bit, DiT bf16, VAE)…")
-    pipe = WanPipeline.from_diffusers(LOCAL, text_encoder=TEXT_ENCODER_LOCAL)
+    pipe = WanPipeline.from_diffusers(
+        LOCAL, text_encoder=TEXT_ENCODER_LOCAL, quantize_transformer=args.quant_dit
+    )
 
     start = time.perf_counter()
     video = pipe(
@@ -84,6 +99,7 @@ def main() -> None:
         num_inference_steps=args.steps,
         guidance_scale=args.guidance,
         seed=args.seed,
+        cache_threshold=args.cache,
     )
     mx.eval(video)
     secs = time.perf_counter() - start

@@ -62,3 +62,40 @@ lazily, quantizing the multi-GB encoder never holds it all in RAM at once.
   16 GB Mac. The pipeline can also release the text encoder after encoding
   (`release_text_encoder=True`, the default) to free memory before denoising.
 - Smaller `--size` / `--frames` / `--steps` cut runtime and memory substantially.
+
+## Going faster
+
+The denoising loop runs the two classifier-free-guidance passes as a **single
+batched forward**, so there's only one transformer call per step. At 1.3B the model
+is compute-bound (attention + matmuls), so `mx.compile` and batching shave only a
+few percent — the real levers are caching and quantization.
+
+**First-Block Cache** (`cache_threshold`) exploits the fact that adjacent denoising
+steps produce nearly the same transformer output: it computes only the first block,
+and when that block's contribution has barely changed it reuses the cached residual
+of the other ~29 blocks. Measured on the 1.3B model at 256px / 25 steps:
+
+| `cache_threshold` | speedup | quality |
+| --- | --- | --- |
+| `0.0` (default) | 1.0× | exact |
+| `0.1` | ~1.5× | no visible change |
+| `0.2` | ~2.2× | no visible change (different sample) |
+| `≥ 0.3` | 3×+ | degrades — avoid |
+
+```python
+video = pipe(prompt, num_frames=17, height=256, width=256,
+             num_inference_steps=30, cache_threshold=0.2)   # ~2.2× faster
+```
+
+It perturbs the trajectory, so the sample differs from the exact run (like changing
+the sampler) but stays sharp and coherent up to ~0.2; it's off by default.
+
+**8-bit transformer** halves the DiT's weight memory (2.6 GB → 1.4 GB) at
+essentially no quality cost (cosine 0.99996 vs bf16):
+
+```python
+pipe = WanPipeline.from_diffusers(folder, quantize_transformer=8)
+```
+
+Benchmark the transformer hot path yourself with
+[`scripts/bench_wan.py`](https://github.com/AmirHossein-razlighi/mlx_diffuser/blob/main/scripts/bench_wan.py).

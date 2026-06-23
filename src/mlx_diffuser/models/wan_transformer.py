@@ -19,6 +19,7 @@ import math
 import mlx.core as mx
 import mlx.nn as nn
 
+from ..caching import FirstBlockCache
 from ..configuration import Config
 from ..modeling import ModelMixin
 
@@ -266,10 +267,18 @@ class WanTransformer3DModel(ModelMixin[WanTransformerConfig]):
         self.proj_out = nn.Linear(d, config.out_channels * math.prod(config.patch_size))
         self.scale_shift_table = mx.zeros((1, 2, d))
 
-    def __call__(self, x: mx.array, timestep: mx.array, context: mx.array) -> mx.array:
+    def __call__(
+        self,
+        x: mx.array,
+        timestep: mx.array,
+        context: mx.array,
+        cache: FirstBlockCache | None = None,
+    ) -> mx.array:
         """Predict the flow target for latents ``x`` ``(B, T, H, W, C)`` at ``timestep``.
 
-        ``context`` is per-token text embeddings ``(B, L, text_dim)`` (umT5).
+        ``context`` is per-token text embeddings ``(B, L, text_dim)`` (umT5). When a
+        :class:`~mlx_diffuser.caching.FirstBlockCache` is supplied, the bulk of the
+        transformer blocks may be skipped on steps where the output barely changes.
         """
         b, t, h, w, _ = x.shape
         pt, ph, pw = self.config.patch_size
@@ -282,8 +291,7 @@ class WanTransformer3DModel(ModelMixin[WanTransformerConfig]):
         temb, timestep_proj, context = self.condition_embedder(timestep, context)
         timestep_proj = timestep_proj.reshape(b, 6, -1)
 
-        for block in self.blocks:
-            tokens = block(tokens, context, timestep_proj, rope)
+        tokens = self._run_blocks(tokens, context, timestep_proj, rope, cache)
 
         mod = self.scale_shift_table + temb.astype(mx.float32)[:, None]  # (B, 2, d)
         shift, scale = mod[:, 0:1], mod[:, 1:2]
@@ -295,3 +303,26 @@ class WanTransformer3DModel(ModelMixin[WanTransformerConfig]):
         tokens = tokens.reshape(b, gt, gh, gw, pt, ph, pw, c)
         tokens = tokens.transpose(0, 1, 4, 2, 5, 3, 6, 7)
         return tokens.reshape(b, gt * pt, gh * ph, gw * pw, c)
+
+    def _run_blocks(self, tokens, context, timestep_proj, rope, cache):
+        """Run the transformer blocks, optionally reusing the First-Block Cache.
+
+        On a cache hit we run only block 0 and add the residual cached from the last
+        full step; otherwise we run every block and refresh the cached residual.
+        """
+        if cache is None:
+            for block in self.blocks:
+                tokens = block(tokens, context, timestep_proj, rope)
+            return tokens
+
+        first = self.blocks[0](tokens, context, timestep_proj, rope)
+        # FBCache signal is the *first block's contribution* (first - input), not its
+        # output: the output is dominated by the slowly-drifting input, which would
+        # mask real change and skip the wrong steps.
+        if cache.should_reuse(first - tokens):
+            return first + cache.residual
+        hidden = first
+        for block in self.blocks[1:]:
+            hidden = block(hidden, context, timestep_proj, rope)
+        cache.residual = hidden - first
+        return hidden
