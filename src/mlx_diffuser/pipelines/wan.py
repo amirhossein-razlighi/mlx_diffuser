@@ -51,6 +51,7 @@ class WanPipeline:
         cls,
         folder: str | Path,
         *,
+        text_encoder: str | Path | None = None,
         quantize_text: int | None = 4,
         quantize_transformer: int | None = None,
         transformer_dtype: mx.Dtype = mx.bfloat16,
@@ -60,10 +61,14 @@ class WanPipeline:
 
         ``quantize_text`` keeps the 5.6B umT5 encoder small (4-bit ≈ 3 GB);
         ``quantize_transformer`` optionally quantizes the DiT (defaults to bf16).
+        ``text_encoder`` overrides where the umT5 weights come from — a folder or a
+        single ``.safetensors`` file (e.g. an fp16 community checkpoint, half the
+        size of the fp32 default); falls back to ``folder/text_encoder``.
         """
         from ..converters import get_converter
 
         folder = Path(folder)
+        te_source = Path(text_encoder) if text_encoder is not None else folder / "text_encoder"
         vae = cast(AutoencoderKLWan, get_converter("AutoencoderKLWan").convert(folder / "vae"))
         transformer = cast(
             WanTransformer3DModel,
@@ -71,15 +76,13 @@ class WanPipeline:
                 folder / "transformer", dtype=transformer_dtype, quantize=quantize_transformer
             ),
         )
-        text_encoder = cast(
+        text_encoder_model = cast(
             UMT5EncoderModel,
-            get_converter("UMT5EncoderModel").convert(
-                folder / "text_encoder", quantize=quantize_text
-            ),
+            get_converter("UMT5EncoderModel").convert(te_source, quantize=quantize_text),
         )
         tokenizer = _load_tokenizer(folder / "tokenizer")
         scheduler = FlowMatchEulerScheduler(FlowMatchConfig(shift=shift))
-        return cls(transformer, vae, text_encoder, tokenizer, scheduler)
+        return cls(transformer, vae, text_encoder_model, tokenizer, scheduler)
 
     # --- text encoding -------------------------------------------------------
     def encode_text(self, prompt: str) -> mx.array:

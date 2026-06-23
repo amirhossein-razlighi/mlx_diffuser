@@ -90,17 +90,19 @@ class Converter:
 
     def convert(
         self,
-        source_folder: str | Path,
+        source: str | Path,
         *,
         dtype: mx.Dtype | None = None,
         quantize: int | None = None,
         quant_group_size: int = 64,
     ) -> ModelMixin:
-        """Load a diffusers subfolder and return a populated model.
+        """Load a diffusers component and return a populated model.
 
-        Builds the target model, converts the weights, then loads them strictly so
-        any missing/extra/mis-shaped tensor raises immediately. ``dtype`` casts the
-        floating-point weights; ``quantize`` (2/3/4/6/8) weight-quantizes the model.
+        ``source`` is either a diffusers subfolder (``config.json`` + safetensors
+        shards) or a single ``.safetensors`` file (config falls back to the
+        converter's defaults). Weights are loaded strictly so any missing / extra /
+        mis-shaped tensor raises immediately. ``dtype`` casts the floating-point
+        weights; ``quantize`` (2/3/4/6/8) weight-quantizes the model.
 
         Conversion is memory-safe for very large encoders: safetensors are loaded
         lazily (memory-mapped) and only materialized at the final ``mx.eval``, so
@@ -108,9 +110,15 @@ class Converter:
         """
         from ..quantization import quantize_module  # local import avoids a cycle
 
-        source_folder = Path(source_folder)
-        hf_config = _load_json(source_folder / "config.json")
-        weights = load_safetensors_folder(source_folder)
+        source = Path(source)
+        if source.is_dir():
+            cfg = source / "config.json"
+            hf_config = _load_json(cfg) if cfg.exists() else {}
+            weights = load_safetensors_folder(source)
+        else:
+            sibling = source.parent / "config.json"
+            hf_config = _load_json(sibling) if sibling.exists() else {}
+            weights = mx.load(str(source))  # type: ignore[assignment]
 
         model = self.build_model(hf_config)
         converted = self.convert_weights(weights, hf_config)

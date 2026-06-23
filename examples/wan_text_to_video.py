@@ -4,7 +4,7 @@ Downloads (once) and converts the official diffusers checkpoint, then generates 
 short clip from a prompt and saves it as an MP4/GIF. The 5.6B umT5 text encoder is
 loaded 4-bit so the whole stack (umT5 + DiT + VAE) fits in ~6 GB.
 
-    # one-time download (~29 GB) into checkpoints/
+    # one-time download (~17 GB: DiT + VAE + fp16 umT5) into checkpoints/
     uv run python examples/wan_text_to_video.py --download
 
     uv run python examples/wan_text_to_video.py \
@@ -27,13 +27,24 @@ from mlx_diffuser.utils import to_pil
 
 REPO = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
 LOCAL = "checkpoints/wan2.1-t2v-1.3b"
+# The diffusers repo stores umT5 in fp32 (22.7 GB); since we run it 4-bit, an fp16
+# community copy (~11 GB) is half the download and loses nothing after quantization.
+TEXT_ENCODER_REPO = "mihaiciorobitca/umt5_xxl_fp16"
+TEXT_ENCODER_FILE = "umt5_xxl_fp16.safetensors"
+TEXT_ENCODER_LOCAL = "checkpoints/umt5-xxl-fp16/umt5_xxl_fp16.safetensors"
 
 
 def download() -> None:
-    from huggingface_hub import snapshot_download
+    from huggingface_hub import hf_hub_download, snapshot_download
 
-    print(f"Downloading {REPO} -> {LOCAL} (~29 GB, one time)…")
-    snapshot_download(REPO, local_dir=LOCAL)
+    print(f"Downloading {REPO} (DiT + VAE + tokenizer) -> {LOCAL}…")
+    snapshot_download(
+        REPO,
+        local_dir=LOCAL,
+        allow_patterns=["transformer/*", "vae/*", "scheduler/*", "tokenizer/*", "model_index.json"],
+    )
+    print(f"Downloading fp16 umT5 text encoder ({TEXT_ENCODER_REPO}, ~11 GB)…")
+    hf_hub_download(TEXT_ENCODER_REPO, TEXT_ENCODER_FILE, local_dir="checkpoints/umt5-xxl-fp16")
     print("done.")
 
 
@@ -61,7 +72,7 @@ def main() -> None:
 
     reset_peak_memory()
     print("loading + converting WAN 2.1 (umT5 4-bit, DiT bf16, VAE)…")
-    pipe = WanPipeline.from_diffusers(LOCAL)
+    pipe = WanPipeline.from_diffusers(LOCAL, text_encoder=TEXT_ENCODER_LOCAL)
 
     start = time.perf_counter()
     video = pipe(
