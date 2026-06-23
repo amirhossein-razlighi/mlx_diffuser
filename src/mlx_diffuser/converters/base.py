@@ -88,12 +88,26 @@ class Converter:
         """Map a diffusers state dict onto our model's parameter keys."""
         raise NotImplementedError
 
-    def convert(self, source_folder: str | Path) -> ModelMixin:
+    def convert(
+        self,
+        source_folder: str | Path,
+        *,
+        dtype: mx.Dtype | None = None,
+        quantize: int | None = None,
+        quant_group_size: int = 64,
+    ) -> ModelMixin:
         """Load a diffusers subfolder and return a populated model.
 
         Builds the target model, converts the weights, then loads them strictly so
-        any missing/extra/mis-shaped tensor raises immediately.
+        any missing/extra/mis-shaped tensor raises immediately. ``dtype`` casts the
+        floating-point weights; ``quantize`` (2/3/4/6/8) weight-quantizes the model.
+
+        Conversion is memory-safe for very large encoders: safetensors are loaded
+        lazily (memory-mapped) and only materialized at the final ``mx.eval``, so
+        quantizing a multi-GB model never holds it all in RAM at once.
         """
+        from ..quantization import quantize_module  # local import avoids a cycle
+
         source_folder = Path(source_folder)
         hf_config = _load_json(source_folder / "config.json")
         weights = load_safetensors_folder(source_folder)
@@ -102,7 +116,12 @@ class Converter:
         converted = self.convert_weights(weights, hf_config)
         _assert_matches(model, converted)
         model.load_weights(list(converted.items()), strict=True)
+        if dtype is not None:
+            model.set_dtype(dtype)
+        if quantize is not None:
+            quantize_module(model, bits=quantize, group_size=quant_group_size)
         mx.eval(model.parameters())
+        model.eval()
         return model
 
 

@@ -6,6 +6,7 @@ from .autoencoder_kl_wan import AutoencoderKLWan, AutoencoderKLWanConfig
 from .dit import DiT, DiTConfig
 from .unet2d import UNet2D, UNet2DConfig
 from .video_dit import VideoDiT, VideoDiTConfig
+from .wan_transformer import WanTransformer3DModel, WanTransformerConfig
 
 __all__ = [
     "DiT",
@@ -21,4 +22,6 @@ __all__ = [
     "AutoencoderKLVideoConfig",
     "AutoencoderKLWan",
     "AutoencoderKLWanConfig",
+    "WanTransformer3DModel",
+    "WanTransformerConfig",
 ]

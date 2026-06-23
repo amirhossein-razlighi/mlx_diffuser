@@ -26,4 +26,4 @@ __all__ = [
 ]
 
 # Import side-effect: register the built-in converters.
-from . import wan  # noqa: E402,F401
+from . import umt5, wan  # noqa: E402,F401

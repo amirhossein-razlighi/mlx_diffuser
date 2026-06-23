@@ -61,8 +61,12 @@ def test_vae_roundtrip_shape():
 def test_vae_latent_normalization_roundtrip():
     vae = AutoencoderKLWan(
         AutoencoderKLWanConfig(
-            base_dim=8, z_dim=4, dim_mult=(1, 2, 4, 4), num_res_blocks=1,
-            latents_mean=(0.1, -0.2, 0.3, -0.4), latents_std=(2.0, 0.5, 1.5, 1.0),
+            base_dim=8,
+            z_dim=4,
+            dim_mult=(1, 2, 4, 4),
+            num_res_blocks=1,
+            latents_mean=(0.1, -0.2, 0.3, -0.4),
+            latents_std=(2.0, 0.5, 1.5, 1.0),
         )
     )
     z = mx.random.normal((1, 2, 2, 2, 4))
