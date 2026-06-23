@@ -1,8 +1,10 @@
 """Networks: config-driven nn.Modules that predict the diffusion/flow target."""
 
 from .autoencoder_kl import AutoencoderKL, AutoencoderKLConfig, DiagonalGaussian
+from .autoencoder_kl_video import AutoencoderKLVideo, AutoencoderKLVideoConfig
 from .dit import DiT, DiTConfig
 from .unet2d import UNet2D, UNet2DConfig
+from .video_dit import VideoDiT, VideoDiTConfig
 
 __all__ = [
     "DiT",
@@ -12,4 +14,8 @@ __all__ = [
     "AutoencoderKL",
     "AutoencoderKLConfig",
     "DiagonalGaussian",
+    "VideoDiT",
+    "VideoDiTConfig",
+    "AutoencoderKLVideo",
+    "AutoencoderKLVideoConfig",
 ]
