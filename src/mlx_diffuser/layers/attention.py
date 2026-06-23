@@ -6,6 +6,16 @@ import mlx.core as mx
 import mlx.nn as nn
 
 
+def _rotate_half(x: mx.array) -> mx.array:
+    x1, x2 = mx.split(x, 2, axis=-1)
+    return mx.concatenate([-x2, x1], axis=-1)
+
+
+def _apply_rope(x: mx.array, cos: mx.array, sin: mx.array) -> mx.array:
+    """Rotary embedding on ``(B, heads, T, head_dim)`` with ``(.., T, head_dim)`` cos/sin."""
+    return x * cos + _rotate_half(x) * sin
+
+
 class Attention(nn.Module):
     """Multi-head attention (self- or cross-attention).
 
@@ -42,8 +52,19 @@ class Attention(nn.Module):
         return x.reshape(b, t, self.num_heads, self.head_dim).transpose(0, 2, 1, 3)
 
     def __call__(
-        self, x: mx.array, context: mx.array | None = None, mask: mx.array | None = None
+        self,
+        x: mx.array,
+        context: mx.array | None = None,
+        mask: mx.array | None = None,
+        rope: tuple[mx.array, mx.array] | None = None,
     ) -> mx.array:
+        """Attend over ``x`` (``(B, T, dim)``).
+
+        ``context`` switches to cross-attention. ``rope`` is an optional
+        ``(cos, sin)`` pair broadcastable to ``(B, heads, T, head_dim)`` that
+        rotates the queries/keys before the dot product (self-attention only —
+        position has no meaning across the query/context boundary).
+        """
         kv = x if context is None else context
         q = self._split_heads(self.q_proj(x))
         k = self._split_heads(self.k_proj(kv))
@@ -52,6 +73,11 @@ class Attention(nn.Module):
         if self.q_norm is not None and self.k_norm is not None:
             q = self.q_norm(q)
             k = self.k_norm(k)
+
+        if rope is not None and context is None:
+            cos, sin = rope
+            q = _apply_rope(q, cos, sin)
+            k = _apply_rope(k, cos, sin)
 
         out = mx.fast.scaled_dot_product_attention(q, k, v, scale=self.scale, mask=mask)
         b, _, t, _ = out.shape
