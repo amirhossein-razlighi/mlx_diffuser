@@ -8,6 +8,10 @@
 
 ::: mlx_diffuser.pipelines.WanPipeline
 
+::: mlx_diffuser.pipelines.StableDiffusionXLPipeline
+
 ## Inference caching
 
 ::: mlx_diffuser.caching.FirstBlockCache
+
+::: mlx_diffuser.caching.DeepCache

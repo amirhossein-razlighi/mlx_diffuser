@@ -27,6 +27,14 @@ modalities — from one small, readable codebase.
 **WAN 2.1 (1.3B) text-to-video, generated end-to-end in MLX on Apple silicon** — see the
 [WAN guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/wan/).
 
+<p align="center">
+  <img src="docs/assets/sdxl_lion.jpg" width="360" alt="SDXL lion">
+  <br><sub><em>"a majestic lion standing on a cliff at sunset, photorealistic, cinematic" — SDXL base, 1024×1024</em></sub>
+</p>
+
+**Stable Diffusion XL text-to-image**, the official weights running natively in MLX —
+see the [SDXL guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/sdxl/).
+
 ---
 
 If you know PyTorch and 🤗 `diffusers`, you already know this library:

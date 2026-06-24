@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.3] — 2026-06-24
+
+### Added
+
+- **Stable Diffusion XL (real checkpoints)** — faithful, weight-compatible MLX ports
+  that load the official `stable-diffusion-xl-base` weights:
+  - `SDXLUNet` (cross-attention UNet with size micro-conditioning), `AutoencoderKLSD`
+    (the SD/SDXL VAE, with tiled decode), and `CLIPTextModel` (both CLIP-L and bigG
+    encoders). Each is verified **bit-exact** vs diffusers/transformers (cosine 1.0).
+  - `StableDiffusionXLPipeline.from_diffusers` — tokenize, encode, denoise with
+    classifier-free guidance + add_time_ids conditioning, and decode, all natively in
+    MLX. The Euler scheduler gained `leading` timestep spacing + `init_noise_sigma`
+    to match SDXL exactly.
+  - `examples/sdxl_text_to_image.py` (download + convert + generate a 1024px image).
+- **DeepCache** (`cache_interval`) — skips the deep UNet blocks on most steps,
+  reusing the cached bottleneck feature: ~**1.70×** on SDXL at 1024px with no visible
+  quality change. Plus 8-bit UNet (`quantize_unet`) and VAE tiling (`tile_vae`).
+
 ## [0.1.2] — 2026-06-23
 
 ### Added
