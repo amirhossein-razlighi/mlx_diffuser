@@ -234,21 +234,23 @@ class AutoencoderKLSD(ModelMixin[AutoencoderKLSDConfig]):
         stride = tile - overlap
         ys = sorted({*range(0, max(h - tile, 0) + 1, stride), max(h - tile, 0)})
         xs = sorted({*range(0, max(w - tile, 0) + 1, stride), max(w - tile, 0)})
-        scale = 8  # VAE spatial upsampling factor
+        scale = 2 ** (len(self.config.block_out_channels) - 1)  # VAE spatial upsampling factor
         out = mx.zeros((z.shape[0], h * scale, w * scale, self.config.out_channels))
         wsum = mx.zeros((1, h * scale, w * scale, 1))
         for y in ys:
             for x in xs:
                 dec = self.decoder(z[:, y : y + tile, x : x + tile])  # (B, tile*8, tile*8, C)
                 th, tw = dec.shape[1], dec.shape[2]
-                win = (_feather(th, overlap * scale)[:, None] * _feather(tw, overlap * scale)[None])[
-                    None, :, :, None
-                ]
+                win = (
+                    _feather(th, overlap * scale)[:, None] * _feather(tw, overlap * scale)[None]
+                )[None, :, :, None]
                 py, px = y * scale, x * scale
                 out[:, py : py + th, px : px + tw] += dec * win
                 wsum[:, py : py + th, px : px + tw] += win
         return out / wsum
 
-    def __call__(self, x: mx.array, key: mx.array | None = None) -> tuple[mx.array, DiagonalGaussian]:
+    def __call__(
+        self, x: mx.array, key: mx.array | None = None
+    ) -> tuple[mx.array, DiagonalGaussian]:
         posterior = self.encode(x)
         return self.decode(posterior.sample(key)), posterior

@@ -21,6 +21,7 @@ import math
 import mlx.core as mx
 import mlx.nn as nn
 
+from ..caching import DeepCache
 from ..configuration import Config
 from ..modeling import ModelMixin
 
@@ -357,12 +358,14 @@ class SDXLUNet(ModelMixin[SDXLUNetConfig]):
         encoder_hidden_states: mx.array,
         text_embeds: mx.array,
         time_ids: mx.array,
+        cache: DeepCache | None = None,
     ) -> mx.array:
         """Predict noise for latents ``sample`` ``(B, H, W, C)``.
 
         ``encoder_hidden_states`` is the ``(B, L, 2048)`` concatenated CLIP context;
         ``text_embeds`` the ``(B, 1280)`` pooled bigG embedding; ``time_ids`` the
-        ``(B, 6)`` SDXL micro-conditioning (sizes / crop).
+        ``(B, 6)`` SDXL micro-conditioning (sizes / crop). With a ``DeepCache``, the
+        deep blocks may be skipped on most steps.
         """
         b = sample.shape[0]
         emb = self.time_embedding(
@@ -371,18 +374,37 @@ class SDXLUNet(ModelMixin[SDXLUNetConfig]):
         tid = _timesteps(time_ids.reshape(-1), self.config.addition_time_embed_dim).reshape(b, -1)
         emb = emb + self.add_embedding(mx.concatenate([text_embeds, tid], axis=-1))
 
+        ehs = encoder_hidden_states
+        if cache is not None and cache.should_reuse():
+            return self._cached_forward(sample, emb, ehs, cache)
+
         x = self.conv_in(sample)
         res_samples = [x]
         for block in self.down_blocks:
-            x, res = block(x, emb, encoder_hidden_states)
+            x, res = block(x, emb, ehs)
             res_samples += res
 
-        x = self.mid_block(x, emb, encoder_hidden_states)
+        x = self.mid_block(x, emb, ehs)
 
-        for block in self.up_blocks:
+        for block in self.up_blocks[:-1]:
             take = len(block.resnets)
-            skips = res_samples[-take:]
+            x = block(x, res_samples[-take:], emb, ehs)
             res_samples = res_samples[:-take]
-            x = block(x, skips, emb, encoder_hidden_states)
 
+        if cache is not None:
+            cache.deep = x  # the input to the shallow up block — reused on cached steps
+
+        last = self.up_blocks[-1]
+        x = last(x, res_samples[-len(last.resnets) :], emb, ehs)
+        return self.conv_out(nn.silu(self.conv_norm_out(x)))
+
+    def _cached_forward(self, sample, emb, ehs, cache: DeepCache) -> mx.array:
+        """DeepCache step: run only conv_in + first down block + last up block."""
+        x = self.conv_in(sample)
+        shallow = [x]
+        x, res0 = self.down_blocks[0](x, emb, ehs)
+        shallow += res0
+        last = self.up_blocks[-1]
+        skips = shallow[: len(last.resnets)]  # conv_in + first down block's resnets
+        x = last(cache.deep, skips, emb, ehs)
         return self.conv_out(nn.silu(self.conv_norm_out(x)))

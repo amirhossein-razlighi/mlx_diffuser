@@ -73,7 +73,11 @@ class _CLIPAttention(nn.Module):
         return x.reshape(b, t, self.num_heads, self.head_dim).transpose(0, 2, 1, 3)
 
     def __call__(self, x: mx.array, mask: mx.array) -> mx.array:
-        q, k, v = self._heads(self.q_proj(x)), self._heads(self.k_proj(x)), self._heads(self.v_proj(x))
+        q, k, v = (
+            self._heads(self.q_proj(x)),
+            self._heads(self.k_proj(x)),
+            self._heads(self.v_proj(x)),
+        )
         out = mx.fast.scaled_dot_product_attention(q, k, v, scale=self.scale, mask=mask)
         b, _, t, _ = out.shape
         out = out.transpose(0, 2, 1, 3).reshape(b, t, self.num_heads * self.head_dim)

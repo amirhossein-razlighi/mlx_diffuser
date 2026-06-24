@@ -15,6 +15,7 @@ from typing import cast
 
 import mlx.core as mx
 
+from ..caching import DeepCache
 from ..models.autoencoder_kl_sd import AutoencoderKLSD
 from ..models.clip_text import CLIPTextModel
 from ..models.unet_sdxl import SDXLUNet
@@ -130,13 +131,15 @@ class StableDiffusionXLPipeline:
         num_inference_steps: int = 30,
         guidance_scale: float = 5.0,
         seed: int = 0,
+        cache_interval: int = 1,
         tile_vae: bool = False,
         progress: bool = True,
     ) -> mx.array:
         """Generate an image ``(1, height, width, 3)`` in ``[-1, 1]``.
 
-        ``height`` / ``width`` must be multiples of 8. ``tile_vae`` decodes the VAE in
-        tiles to bound memory at high resolution.
+        ``height`` / ``width`` must be multiples of 8. ``cache_interval`` enables
+        DeepCache (1 = off/exact; 2 ≈ 1.5-1.8x by skipping the deep UNet blocks on every
+        other step). ``tile_vae`` decodes the VAE in tiles to bound memory at high res.
         """
         if height % 8 or width % 8:
             raise ValueError("height and width must be multiples of 8.")
@@ -161,16 +164,17 @@ class StableDiffusionXLPipeline:
         latents = mx.random.normal((1, height // 8, width // 8, 4), key=mx.random.key(seed))
         latents = latents * self.scheduler.init_noise_sigma
 
+        cache = DeepCache(cache_interval) if cache_interval > 1 else None
         for i, t in enumerate(steps):
             scaled = self.scheduler.scale_model_input(latents, t)
             tt = mx.broadcast_to(t, (n,))
             if use_cfg:
                 x2 = mx.concatenate([scaled, scaled], axis=0)
-                out = self.unet(x2, tt, context, text_embeds, time_ids)
+                out = self.unet(x2, tt, context, text_embeds, time_ids, cache=cache)
                 cond, uncond = out[:1], out[1:]
                 noise = uncond + guidance_scale * (cond - uncond)
             else:
-                noise = self.unet(scaled, tt, context, text_embeds, time_ids)
+                noise = self.unet(scaled, tt, context, text_embeds, time_ids, cache=cache)
             latents = self.scheduler.step(noise, t, latents)
             mx.eval(latents)
             if progress:
