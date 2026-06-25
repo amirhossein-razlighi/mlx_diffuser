@@ -65,7 +65,9 @@ def main() -> None:
     p.add_argument("--steps", type=int, default=4, help="schnell: ~4; dev: ~50")
     p.add_argument("--guidance", type=float, default=0.0, help="dev only (schnell ignores it)")
     p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--max-seq", type=int, default=256, help="T5 token budget (schnell 256, dev 512)")
+    p.add_argument(
+        "--max-seq", type=int, default=256, help="T5 token budget (schnell 256, dev 512)"
+    )
     p.add_argument("--quant", type=int, default=4, choices=[4, 8], help="transformer/T5 bits")
     p.add_argument("--cache", type=float, default=0.0, help="First-Block-Cache threshold (0=off)")
     p.add_argument(
