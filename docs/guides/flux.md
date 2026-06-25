@@ -5,10 +5,19 @@ mlx-diffuser ships faithful, weight-compatible ports of **FLUX.1**, Black Forest
 natively in MLX. Loading, conversion, text encoding, denoising, and decoding all happen
 on Metal.
 
-<p align="center">
-  <img src="../../assets/flux_lion.jpg" width="420" alt="FLUX.1-schnell lion">
-  <br><sub><em>"a majestic lion standing on a cliff at sunset, photorealistic, cinematic" — FLUX.1-schnell, 1024×1024, 4 steps, 4-bit, generated on a Mac</em></sub>
-</p>
+<table>
+<tr>
+<td align="center"><img src="../../assets/flux_lion.jpg" width="360" alt="FLUX.1 lion"></td>
+<td align="center"><img src="../../assets/flux_fox.jpg" width="360" alt="FLUX.1 fox"></td>
+</tr>
+<tr>
+<td align="center"><sub><em>"a majestic lion standing on a cliff at sunset, photorealistic, cinematic"</em></sub></td>
+<td align="center"><sub><em>"a red fox trotting through snow, cinematic"</em></sub></td>
+</tr>
+</table>
+
+<p align="center"><sub><em>FLUX.1-schnell, 1024×1024, 4 steps, 4-bit — generated on an M1 Pro (16 GB).
+The fox is straight from the CLI: <code>mlx-diffuser generate --model flux --prompt "a red fox trotting through snow, cinematic" --tile-vae</code></em></sub></p>
 
 ## Components
 
