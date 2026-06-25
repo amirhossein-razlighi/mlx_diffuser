@@ -47,3 +47,13 @@
 ::: mlx_diffuser.models.CLIPTextModel
 
 ::: mlx_diffuser.models.CLIPTextConfig
+
+## FLUX.1 (weight-compatible ports)
+
+::: mlx_diffuser.models.FluxTransformer2DModel
+
+::: mlx_diffuser.models.FluxConfig
+
+::: mlx_diffuser.models.T5EncoderModel
+
+::: mlx_diffuser.models.T5Config

@@ -27,13 +27,23 @@ modalities — from one small, readable codebase.
 **WAN 2.1 (1.3B) text-to-video, generated end-to-end in MLX on Apple silicon** — see the
 [WAN guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/wan/).
 
-<p align="center">
-  <img src="docs/assets/sdxl_lion.jpg" width="360" alt="SDXL lion">
-  <br><sub><em>"a majestic lion standing on a cliff at sunset, photorealistic, cinematic" — SDXL base, 1024×1024</em></sub>
-</p>
+<table>
+<tr>
+<td align="center"><img src="docs/assets/sdxl_lion.jpg" width="320" alt="SDXL lion"></td>
+<td align="center"><img src="docs/assets/flux_lion.jpg" width="320" alt="FLUX.1 lion"></td>
+</tr>
+<tr>
+<td align="center"><sub><em>SDXL base — 1024×1024</em></sub></td>
+<td align="center"><sub><em>FLUX.1-schnell — 1024², 4 steps, 4-bit</em></sub></td>
+</tr>
+</table>
 
-**Stable Diffusion XL text-to-image**, the official weights running natively in MLX —
-see the [SDXL guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/sdxl/).
+<p align="center"><sub><em>"a majestic lion standing on a cliff at sunset, photorealistic, cinematic"</em></sub></p>
+
+**Stable Diffusion XL** and **FLUX.1** text-to-image, the official weights running natively
+in MLX — see the [SDXL guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/sdxl/)
+and the [FLUX guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/flux/). The
+12B FLUX.1 runs 4-bit and fits a 16 GB Mac.
 
 ---
 

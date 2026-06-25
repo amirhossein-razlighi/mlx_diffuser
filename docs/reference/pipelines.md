@@ -10,6 +10,8 @@
 
 ::: mlx_diffuser.pipelines.StableDiffusionXLPipeline
 
+::: mlx_diffuser.pipelines.FluxPipeline
+
 ## Inference caching
 
 ::: mlx_diffuser.caching.FirstBlockCache

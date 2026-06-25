@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.4] — 2026-06-25
+
+### Added
+
+- **FLUX.1 (real checkpoints)** — faithful, weight-compatible MLX ports that load the
+  official `FLUX.1-schnell` / `FLUX.1-dev` weights:
+  - `FluxTransformer2DModel` — the 12B-parameter MMDiT (19 double-stream joint-attention
+    blocks + 38 single-stream blocks, 3-axis RoPE, adaLN-Zero, qk-RMSNorm) and
+    `T5EncoderModel` (the T5-XXL text encoder). Each is verified **bit-exact** vs
+    diffusers/transformers (cosine 1.0); the 16-channel FLUX VAE reuses `AutoencoderKLSD`
+    (now with optional `shift_factor` and quant-conv-free loading).
+  - `FluxPipeline.from_diffusers` — tokenize (CLIP + T5), encode, flow-match denoise, and
+    decode, all natively in MLX, with the resolution-dependent (`mu`-shifted) FLUX sigma
+    schedule. schnell runs in ~4 steps; dev adds the distilled `guidance` embedding.
+  - `examples/flux_text_to_image.py` (download + convert + generate a 1024px image).
+- **4-bit by default for FLUX** — the transformer and T5 load weight-quantized so the
+  whole 12B pipeline fits in ~10 GB of unified memory (it is ~34 GB in bf16). Conversion
+  is memory-safe (lazy mmap + quantize). First-Block caching (`cache_threshold`) and
+  `release_text_encoders` further cut compute and peak memory.
+
 ## [0.1.3] — 2026-06-24
 
 ### Added
