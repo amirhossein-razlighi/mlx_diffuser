@@ -66,6 +66,9 @@ class SDVAEConverter(Converter):
             layers_per_block=hf_config["layers_per_block"],
             norm_groups=hf_config.get("norm_num_groups", 32),
             scaling_factor=hf_config.get("scaling_factor", 0.18215),
+            # FLUX / SD3 VAEs shift latents and drop the quant convs; SD/SDXL do not.
+            shift_factor=hf_config.get("shift_factor") or 0.0,
+            use_quant_conv=hf_config.get("use_quant_conv", True),
         )
 
     def build_model(self, hf_config: dict) -> AutoencoderKLSD:

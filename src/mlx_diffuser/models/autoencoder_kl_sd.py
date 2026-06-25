@@ -29,6 +29,8 @@ class AutoencoderKLSDConfig(Config):
     layers_per_block: int = 2
     norm_groups: int = 32
     scaling_factor: float = 0.13025  # SDXL
+    shift_factor: float = 0.0  # FLUX/SD3 shift latents before scaling: (z - shift) * scale
+    use_quant_conv: bool = True  # SD/SDXL have quant convs; FLUX/SD3 VAEs do not
 
 
 class _Resnet(nn.Module):
@@ -204,15 +206,25 @@ class AutoencoderKLSD(ModelMixin[AutoencoderKLSDConfig]):
         self.config = config
         self.encoder = _Encoder(config)
         self.decoder = _Decoder(config)
-        self.quant_conv = nn.Conv2d(2 * config.latent_channels, 2 * config.latent_channels, 1)
-        self.post_quant_conv = nn.Conv2d(config.latent_channels, config.latent_channels, 1)
+        self.quant_conv: nn.Conv2d | None = None
+        self.post_quant_conv: nn.Conv2d | None = None
+        if config.use_quant_conv:  # FLUX / SD3 VAEs skip the quant convs
+            self.quant_conv = nn.Conv2d(2 * config.latent_channels, 2 * config.latent_channels, 1)
+            self.post_quant_conv = nn.Conv2d(config.latent_channels, config.latent_channels, 1)
 
     @property
     def scaling_factor(self) -> float:
         return self.config.scaling_factor
 
+    @property
+    def shift_factor(self) -> float:
+        return self.config.shift_factor
+
     def encode(self, x: mx.array) -> DiagonalGaussian:
-        return DiagonalGaussian(self.quant_conv(self.encoder(x)))
+        moments = self.encoder(x)
+        if self.quant_conv is not None:
+            moments = self.quant_conv(moments)
+        return DiagonalGaussian(moments)
 
     def decode(
         self, z: mx.array, *, tile: bool = False, tile_latent: int = 64, overlap_latent: int = 16
@@ -223,7 +235,8 @@ class AutoencoderKLSD(ModelMixin[AutoencoderKLSDConfig]):
         ``tile_latent``-sized spatial tiles (stride ``tile_latent - overlap_latent``),
         each decoded independently, then feather-blended back together.
         """
-        z = self.post_quant_conv(z)
+        if self.post_quant_conv is not None:
+            z = self.post_quant_conv(z)
         h, w = z.shape[1], z.shape[2]
         if not tile or (h <= tile_latent and w <= tile_latent):
             return self.decoder(z)

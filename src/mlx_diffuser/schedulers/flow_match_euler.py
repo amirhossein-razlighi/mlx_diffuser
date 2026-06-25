@@ -65,6 +65,19 @@ class FlowMatchEulerScheduler(Scheduler):
         self.timesteps = sigmas
         self._step_index = 0
 
+    def set_sigmas(self, sigmas: mx.array) -> None:
+        """Drive the integrator from an externally-computed sigma schedule (FLUX / SD3).
+
+        ``sigmas`` is the descending list of flow times in ``[0, 1]`` (one per step, high
+        noise first); a terminal ``0`` is appended automatically. The model is conditioned
+        on each ``sigma`` directly. Used by pipelines that compute a resolution-dependent
+        (``mu``-shifted) schedule themselves rather than the static-shift default.
+        """
+        self.num_inference_steps = int(sigmas.shape[0])
+        self.sigmas = mx.concatenate([sigmas, mx.zeros((1,))])
+        self.timesteps = sigmas
+        self._step_index = 0
+
     def step(
         self, model_output: mx.array, t: mx.array, sample: mx.array, key: mx.array | None = None
     ) -> mx.array:
