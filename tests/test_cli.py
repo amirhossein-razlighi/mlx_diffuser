@@ -41,6 +41,31 @@ def test_parser_builds():
     assert args.labels == "1,2"
 
 
+def test_generate_model_aliases_resolve():
+    from mlx_diffuser.cli import _resolve_model
+
+    assert _resolve_model("flux")[0] == "flux-schnell"
+    assert _resolve_model("wan")[0] == "wan-1.3b"
+    assert _resolve_model("sdxl")[1].modality == "image"
+    assert _resolve_model("wan")[1].modality == "video"
+
+
+def test_generate_unknown_model_errors():
+    with pytest.raises(SystemExit, match="Unknown model"):
+        main(["generate", "--model", "nope", "--prompt", "x"])
+
+
+def test_generate_missing_checkpoint_errors(tmp_path):
+    missing = tmp_path / "absent"
+    with pytest.raises(SystemExit, match="checkpoint not found"):
+        main(["generate", "--model", "sdxl", "--prompt", "x", "--checkpoint", str(missing)])
+
+
+def test_generate_modality_mismatch_errors():
+    with pytest.raises(SystemExit, match="not 'video'"):
+        main(["generate", "--model", "flux", "--modality", "video", "--prompt", "x"])
+
+
 def test_generate_writes_images(tmp_path):
     model_dir = _tiny_pipeline_dir(tmp_path)
     out = tmp_path / "out"

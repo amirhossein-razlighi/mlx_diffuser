@@ -23,6 +23,11 @@ All notable changes to this project are documented here. The format is based on
   whole 12B pipeline fits in ~10 GB of unified memory (it is ~34 GB in bf16). Conversion
   is memory-safe (lazy mmap + quantize). First-Block caching (`cache_threshold`) and
   `release_text_encoders` further cut compute and peak memory.
+- **Unified `generate` CLI** — `mlx-diffuser generate --model sdxl|flux|flux-dev|wan
+  --prompt "…" --out out.png` drives the real text-to-image / text-to-video pipelines by
+  name (with `--download` to fetch the checkpoint, `--modality` to cross-check, and the
+  usual `--steps`/`--guidance`/`--size`/`--quantize`/`--tile-vae`/`--frames` knobs). The
+  legacy class-conditional path (`generate MODEL --labels …`) is unchanged.
 
 ## [0.1.3] — 2026-06-24
 
