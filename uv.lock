@@ -704,7 +704,7 @@ wheels = [
 ]
 
 [[package]]
-name = "mlx-diffusion"
+name = "mlx-diffuser"
 source = { editable = "." }
 dependencies = [
     { name = "mlx" },

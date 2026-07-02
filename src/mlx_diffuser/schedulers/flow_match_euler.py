@@ -54,10 +54,28 @@ class FlowMatchEulerScheduler(Scheduler):
     # --- sampling ---------------------------------------------------------
     def set_timesteps(self, num_inference_steps: int) -> None:
         self.num_inference_steps = num_inference_steps
-        sigmas = mx.linspace(1.0, 0.0, num_inference_steps + 1)
+        # Match the SD3/Flux/WAN flow convention: space sigmas over
+        # ``[1, 1/num_train_timesteps]`` (so the last model evaluation is at very
+        # low noise), apply the resolution shift, then append a final sigma of 0.
+        # Sampling at a coarse final sigma instead leaves the sample under-denoised.
+        sigma_min = 1.0 / self.config.num_train_timesteps
+        sigmas = mx.linspace(1.0, sigma_min, num_inference_steps)
         sigmas = self._shift(sigmas)
-        self.sigmas = sigmas
-        self.timesteps = sigmas[:-1]
+        self.sigmas = mx.concatenate([sigmas, mx.zeros((1,))])
+        self.timesteps = sigmas
+        self._step_index = 0
+
+    def set_sigmas(self, sigmas: mx.array) -> None:
+        """Drive the integrator from an externally-computed sigma schedule (FLUX / SD3).
+
+        ``sigmas`` is the descending list of flow times in ``[0, 1]`` (one per step, high
+        noise first); a terminal ``0`` is appended automatically. The model is conditioned
+        on each ``sigma`` directly. Used by pipelines that compute a resolution-dependent
+        (``mu``-shifted) schedule themselves rather than the static-shift default.
+        """
+        self.num_inference_steps = int(sigmas.shape[0])
+        self.sigmas = mx.concatenate([sigmas, mx.zeros((1,))])
+        self.timesteps = sigmas
         self._step_index = 0
 
     def step(

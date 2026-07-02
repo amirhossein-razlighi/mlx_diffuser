@@ -52,6 +52,9 @@ nav:
   - Concepts: concepts.md
   - Guides:
       - Models: guides/models.md
+      - WAN 2.1 text-to-video: guides/wan.md
+      - Stable Diffusion XL: guides/sdxl.md
+      - FLUX.1: guides/flux.md
       - Schedulers: guides/schedulers.md
       - Training: guides/training.md
       - LoRA fine-tuning: guides/lora.md

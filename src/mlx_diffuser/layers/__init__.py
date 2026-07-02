@@ -10,6 +10,8 @@ from .embeddings import (
     timestep_embedding,
 )
 from .normalization import AdaLNModulation, modulate
+from .rope import rope_3d_freqs
+from .video_blocks import PatchEmbed3D, VideoDiTBlock
 
 __all__ = [
     "Attention",
@@ -23,4 +25,7 @@ __all__ = [
     "timestep_embedding",
     "AdaLNModulation",
     "modulate",
+    "rope_3d_freqs",
+    "PatchEmbed3D",
+    "VideoDiTBlock",
 ]

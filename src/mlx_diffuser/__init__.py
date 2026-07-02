@@ -8,13 +8,27 @@ from .modeling import ModelMixin
 from .models import (
     AutoencoderKL,
     AutoencoderKLConfig,
+    AutoencoderKLVideo,
+    AutoencoderKLVideoConfig,
+    AutoencoderKLWan,
+    AutoencoderKLWanConfig,
     DiT,
     DiTConfig,
     UNet2D,
     UNet2DConfig,
+    VideoDiT,
+    VideoDiTConfig,
+    WanTransformer3DModel,
+    WanTransformerConfig,
 )
+from .models.umt5 import UMT5Config, UMT5EncoderModel
 from .perf import compile_model, memory_report, set_memory_limit
-from .pipelines import ClassConditionalPipeline, DiffusionPipeline
+from .pipelines import (
+    ClassConditionalPipeline,
+    DiffusionPipeline,
+    TextToVideoPipeline,
+    WanPipeline,
+)
 from .quantization import quantize_module
 from .schedulers import (
     DDIMScheduler,
@@ -37,8 +51,20 @@ __all__ = [
     "UNet2DConfig",
     "AutoencoderKL",
     "AutoencoderKLConfig",
+    "VideoDiT",
+    "VideoDiTConfig",
+    "AutoencoderKLVideo",
+    "AutoencoderKLVideoConfig",
+    "WanTransformer3DModel",
+    "WanTransformerConfig",
+    "AutoencoderKLWan",
+    "AutoencoderKLWanConfig",
+    "UMT5EncoderModel",
+    "UMT5Config",
     "DiffusionPipeline",
     "ClassConditionalPipeline",
+    "TextToVideoPipeline",
+    "WanPipeline",
     "DiffusionTrainer",
     "EMA",
     "inject_lora",

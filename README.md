@@ -13,6 +13,40 @@ modalities — from one small, readable codebase.
 
 ---
 
+<table>
+<tr>
+<td align="center"><img src="docs/assets/wan_fox.gif" width="240" alt="fox"></td>
+<td align="center"><img src="docs/assets/wan_panda_surf.gif" width="240" alt="panda surfing"></td>
+</tr>
+<tr>
+<td align="center"><sub><em>"a red fox trotting through snow, cinematic"</em></sub></td>
+<td align="center"><sub><em>"a panda surfing a big wave at sunset, cinematic"</em></sub></td>
+</tr>
+</table>
+
+**WAN 2.1 (1.3B) text-to-video, generated end-to-end in MLX on Apple silicon** — see the
+[WAN guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/wan/).
+
+<table>
+<tr>
+<td align="center"><img src="docs/assets/sdxl_lion.jpg" width="320" alt="SDXL lion"></td>
+<td align="center"><img src="docs/assets/flux_lion.jpg" width="320" alt="FLUX.1 lion"></td>
+</tr>
+<tr>
+<td align="center"><sub><em>SDXL base — 1024×1024</em></sub></td>
+<td align="center"><sub><em>FLUX.1-schnell — 1024², 4 steps, 4-bit</em></sub></td>
+</tr>
+</table>
+
+<p align="center"><sub><em>"a majestic lion standing on a cliff at sunset, photorealistic, cinematic"</em></sub></p>
+
+**Stable Diffusion XL** and **FLUX.1** text-to-image, the official weights running natively
+in MLX — see the [SDXL guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/sdxl/)
+and the [FLUX guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/flux/). The
+12B FLUX.1 runs 4-bit and fits a 16 GB Mac.
+
+---
+
 If you know PyTorch and 🤗 `diffusers`, you already know this library:
 `Model.from_pretrained(...)`, `pipe(...)`, `nn.Module` everywhere. The difference
 is underneath — unified memory, `mx.compile`, fused Metal kernels, and built-in
