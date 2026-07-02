@@ -33,3 +33,27 @@
 ::: mlx_diffuser.models.AutoencoderKLWanConfig
 
 ::: mlx_diffuser.models.umt5.UMT5EncoderModel
+
+## Stable Diffusion XL (weight-compatible ports)
+
+::: mlx_diffuser.models.SDXLUNet
+
+::: mlx_diffuser.models.SDXLUNetConfig
+
+::: mlx_diffuser.models.AutoencoderKLSD
+
+::: mlx_diffuser.models.AutoencoderKLSDConfig
+
+::: mlx_diffuser.models.CLIPTextModel
+
+::: mlx_diffuser.models.CLIPTextConfig
+
+## FLUX.1 (weight-compatible ports)
+
+::: mlx_diffuser.models.FluxTransformer2DModel
+
+::: mlx_diffuser.models.FluxConfig
+
+::: mlx_diffuser.models.T5EncoderModel
+
+::: mlx_diffuser.models.T5Config

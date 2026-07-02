@@ -18,11 +18,13 @@ from .ddpm import DDPMConfig, DDPMScheduler
 
 @dataclasses.dataclass
 class EulerConfig(DDPMConfig):
-    pass
+    timestep_spacing: str = "linspace"  # "leading" for Stable Diffusion / SDXL
+    steps_offset: int = 0
 
 
 class EulerDiscreteScheduler(DDPMScheduler):
     config_class = EulerConfig
+    config: EulerConfig
 
     def __init__(self, config: EulerConfig | None = None):
         super().__init__(config or EulerConfig())
@@ -34,13 +36,26 @@ class EulerDiscreteScheduler(DDPMScheduler):
         T = self.config.num_train_timesteps
         self.num_inference_steps = num_inference_steps
         train_sigmas = np.array(self._train_sigmas)  # ascending in index
-        # Sample fractional timesteps high->low and interpolate sigmas onto them.
-        ts = np.linspace(0, T - 1, num_inference_steps)[::-1].copy()
+        if self.config.timestep_spacing == "leading":
+            step_ratio = T // num_inference_steps
+            ts = (np.arange(num_inference_steps) * step_ratio).round()[::-1].astype(np.float64)
+            ts = ts + self.config.steps_offset
+        else:  # "linspace": fractional timesteps high->low
+            ts = np.linspace(0, T - 1, num_inference_steps)[::-1].copy()
         sigmas = np.interp(ts, np.arange(T), train_sigmas)
         sigmas = np.concatenate([sigmas, [0.0]]).astype(np.float32)
         self.sigmas = mx.array(sigmas)
         self.timesteps = mx.array(ts.astype(np.float32))
         self._step_index = 0
+
+    @property
+    def init_noise_sigma(self) -> float:
+        """Std-dev for the initial latent noise (matches diffusers EulerDiscrete)."""
+        assert self.sigmas is not None, "call set_timesteps() before sampling"
+        sigma_max = float(self.sigmas[0])
+        if self.config.timestep_spacing in ("linspace", "trailing"):
+            return sigma_max
+        return (sigma_max**2 + 1.0) ** 0.5
 
     def scale_model_input(self, sample: mx.array, t: mx.array) -> mx.array:
         assert self.sigmas is not None, "call set_timesteps() before sampling"

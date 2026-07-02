@@ -128,9 +128,31 @@ class Converter:
             model.set_dtype(dtype)
         if quantize is not None:
             quantize_module(model, bits=quantize, group_size=quant_group_size)
-        mx.eval(model.parameters())
+        # Materialize the parameter tree in chunks rather than one `mx.eval`. The weights
+        # are lazy (mmap'd); a single eval would force every source tensor resident at
+        # once, spiking to the *unquantized* size (~24 GB for FLUX). We first drop our own
+        # references to the source dicts so that, as each chunk is quantized, its bf16
+        # source can be freed — then peak stays near the quantized footprint instead of
+        # swapping. (For unquantized loads this is just a chunked eval, equally correct.)
+        del converted, weights
+        _eval_in_chunks(model.parameters())
         model.eval()
         return model
+
+
+def _eval_in_chunks(params, chunk: int = 24) -> None:
+    """Evaluate a parameter tree ``chunk`` leaves at a time to bound peak memory.
+
+    Quantizing a multi-GB model in one ``mx.eval`` holds every source tensor resident at
+    once; evaluating small groups (and releasing MLX's buffer cache between them) keeps
+    only a handful of transient full-precision tensors live, so peak tracks the quantized
+    result rather than the original. The caller must drop its references to the source
+    (unquantized) weights first, or they stay resident regardless.
+    """
+    leaves = [v for _, v in tree_flatten(params)]  # type: ignore[union-attr, str-unpack]
+    for i in range(0, len(leaves), chunk):
+        mx.eval(leaves[i : i + chunk])
+        mx.clear_cache()  # return the just-freed source buffers to the OS, not MLX's pool
 
 
 def _assert_matches(model: ModelMixin, converted: dict[str, mx.array]) -> None:

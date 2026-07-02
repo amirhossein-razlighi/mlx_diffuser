@@ -4,6 +4,49 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.4] — 2026-06-25
+
+### Added
+
+- **FLUX.1 (real checkpoints)** — faithful, weight-compatible MLX ports that load the
+  official `FLUX.1-schnell` / `FLUX.1-dev` weights:
+  - `FluxTransformer2DModel` — the 12B-parameter MMDiT (19 double-stream joint-attention
+    blocks + 38 single-stream blocks, 3-axis RoPE, adaLN-Zero, qk-RMSNorm) and
+    `T5EncoderModel` (the T5-XXL text encoder). Each is verified **bit-exact** vs
+    diffusers/transformers (cosine 1.0); the 16-channel FLUX VAE reuses `AutoencoderKLSD`
+    (now with optional `shift_factor` and quant-conv-free loading).
+  - `FluxPipeline.from_diffusers` — tokenize (CLIP + T5), encode, flow-match denoise, and
+    decode, all natively in MLX, with the resolution-dependent (`mu`-shifted) FLUX sigma
+    schedule. schnell runs in ~4 steps; dev adds the distilled `guidance` embedding.
+  - `examples/flux_text_to_image.py` (download + convert + generate a 1024px image).
+- **4-bit by default for FLUX** — the transformer and T5 load weight-quantized so the
+  whole 12B pipeline fits in ~10 GB of unified memory (it is ~34 GB in bf16). Conversion
+  is memory-safe (lazy mmap + quantize). First-Block caching (`cache_threshold`) and
+  `release_text_encoders` further cut compute and peak memory.
+- **Unified `generate` CLI** — `mlx-diffuser generate --model sdxl|flux|flux-dev|wan
+  --prompt "…" --out out.png` drives the real text-to-image / text-to-video pipelines by
+  name (with `--download` to fetch the checkpoint, `--modality` to cross-check, and the
+  usual `--steps`/`--guidance`/`--size`/`--quantize`/`--tile-vae`/`--frames` knobs). The
+  legacy class-conditional path (`generate MODEL --labels …`) is unchanged.
+
+## [0.1.3] — 2026-06-24
+
+### Added
+
+- **Stable Diffusion XL (real checkpoints)** — faithful, weight-compatible MLX ports
+  that load the official `stable-diffusion-xl-base` weights:
+  - `SDXLUNet` (cross-attention UNet with size micro-conditioning), `AutoencoderKLSD`
+    (the SD/SDXL VAE, with tiled decode), and `CLIPTextModel` (both CLIP-L and bigG
+    encoders). Each is verified **bit-exact** vs diffusers/transformers (cosine 1.0).
+  - `StableDiffusionXLPipeline.from_diffusers` — tokenize, encode, denoise with
+    classifier-free guidance + add_time_ids conditioning, and decode, all natively in
+    MLX. The Euler scheduler gained `leading` timestep spacing + `init_noise_sigma`
+    to match SDXL exactly.
+  - `examples/sdxl_text_to_image.py` (download + convert + generate a 1024px image).
+- **DeepCache** (`cache_interval`) — skips the deep UNet blocks on most steps,
+  reusing the cached bottleneck feature: ~**1.70×** on SDXL at 1024px with no visible
+  quality change. Plus 8-bit UNet (`quantize_unet`) and VAE tiling (`tile_vae`).
+
 ## [0.1.2] — 2026-06-23
 
 ### Added

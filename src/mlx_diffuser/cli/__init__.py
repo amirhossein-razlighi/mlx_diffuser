@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import mlx.core as mx
@@ -14,22 +16,197 @@ logger = get_logger()
 
 
 # --------------------------------------------------------------------------- #
-# generate
+# generate — text-to-image / text-to-video over the real-checkpoint pipelines
 # --------------------------------------------------------------------------- #
+@dataclasses.dataclass(frozen=True)
+class _ModelSpec:
+    """A named text-to-X model: where its checkpoint lives and how to run it."""
+
+    modality: str  # "image" | "video"
+    repo: str  # Hugging Face repo id (for --download)
+    local: str  # default local checkpoint dir
+    patterns: tuple[str, ...]  # snapshot_download allow_patterns
+    run: Callable[[str, argparse.Namespace], mx.array]  # (folder, args) -> (B, ...) array
+    aliases: tuple[str, ...] = ()
+
+
+def _diffusers_patterns(*components: str) -> tuple[str, ...]:
+    base = ["model_index.json", "scheduler/*", "tokenizer/*", "tokenizer_2/*"]
+    for c in components:
+        base += [f"{c}/config.json", f"{c}/*.safetensors"]
+    return tuple(base)
+
+
+def _run_sdxl(folder: str, a: argparse.Namespace) -> mx.array:
+    from ..pipelines import StableDiffusionXLPipeline
+
+    pipe = StableDiffusionXLPipeline.from_diffusers(folder, quantize_unet=a.quantize)
+    return pipe(
+        a.prompt,
+        negative_prompt=a.negative or "",
+        height=a.height,
+        width=a.width,
+        num_inference_steps=a.steps if a.steps is not None else 30,
+        guidance_scale=a.guidance if a.guidance is not None else 5.0,
+        seed=a.seed,
+        cache_interval=int(a.cache) if a.cache else 1,
+        tile_vae=a.tile_vae,
+    )
+
+
+def _run_flux(folder: str, a: argparse.Namespace, *, dev: bool) -> mx.array:
+    from ..pipelines import FluxPipeline
+
+    q = a.quantize if a.quantize is not None else 4  # FLUX needs 4-bit to fit 16 GB
+    pipe = FluxPipeline.from_diffusers(folder, quantize_transformer=q, quantize_t5=q)
+    return pipe(
+        a.prompt,
+        height=a.height,
+        width=a.width,
+        num_inference_steps=a.steps if a.steps is not None else (50 if dev else 4),
+        guidance_scale=a.guidance if a.guidance is not None else (3.5 if dev else 0.0),
+        max_sequence_length=a.max_seq if a.max_seq is not None else (512 if dev else 256),
+        seed=a.seed,
+        cache_threshold=a.cache or 0.0,
+        tile_vae=a.tile_vae,
+        release_text_encoders=a.release_text_encoders,
+    )
+
+
+def _run_wan(folder: str, a: argparse.Namespace) -> mx.array:
+    from ..pipelines import WanPipeline
+
+    pipe = WanPipeline.from_diffusers(folder, quantize_transformer=a.quantize)
+    return pipe(
+        a.prompt,
+        negative_prompt=a.negative or "",
+        num_frames=a.frames,
+        height=a.height,
+        width=a.width,
+        num_inference_steps=a.steps if a.steps is not None else 30,
+        guidance_scale=a.guidance if a.guidance is not None else 5.0,
+        seed=a.seed,
+        cache_threshold=a.cache or 0.0,
+    )
+
+
+MODELS: dict[str, _ModelSpec] = {
+    "sdxl": _ModelSpec(
+        "image",
+        "stabilityai/stable-diffusion-xl-base-1.0",
+        "checkpoints/sdxl-base-1.0",
+        _diffusers_patterns("text_encoder", "text_encoder_2", "unet", "vae"),
+        _run_sdxl,
+    ),
+    "flux-schnell": _ModelSpec(
+        "image",
+        "black-forest-labs/FLUX.1-schnell",
+        "checkpoints/flux1-schnell",
+        _diffusers_patterns("text_encoder", "text_encoder_2", "transformer", "vae"),
+        lambda f, a: _run_flux(f, a, dev=False),
+        aliases=("flux",),
+    ),
+    "flux-dev": _ModelSpec(
+        "image",
+        "black-forest-labs/FLUX.1-dev",
+        "checkpoints/flux1-dev",
+        _diffusers_patterns("text_encoder", "text_encoder_2", "transformer", "vae"),
+        lambda f, a: _run_flux(f, a, dev=True),
+    ),
+    "wan-1.3b": _ModelSpec(
+        "video",
+        "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+        "checkpoints/wan2.1-t2v-1.3b",
+        _diffusers_patterns("text_encoder", "transformer", "vae"),
+        _run_wan,
+        aliases=("wan",),
+    ),
+}
+
+
+def _resolve_model(name: str) -> tuple[str, _ModelSpec]:
+    """Map a model name (or alias) to its canonical key + spec."""
+    for key, spec in MODELS.items():
+        if name == key or name in spec.aliases:
+            return key, spec
+    known = sorted(set(MODELS) | {a for s in MODELS.values() for a in s.aliases})
+    raise SystemExit(f"Unknown model {name!r}. Known text-to-X models: {known}")
+
+
+def _save_output(out: Path, array: mx.array, modality: str, fps: int) -> None:
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if modality == "video":  # (B, T, H, W, 3) -> animated GIF
+        frames = [to_pil(array[0, i]) for i in range(array.shape[1])]
+        frames[0].save(
+            out, save_all=True, append_images=frames[1:], duration=int(1000 / fps), loop=0
+        )
+    else:  # (B, H, W, 3) -> one image per batch element
+        if array.shape[0] == 1:
+            to_pil(array[0]).save(out)
+        else:
+            out.mkdir(parents=True, exist_ok=True)
+            for i in range(array.shape[0]):
+                to_pil(array[i]).save(out / f"sample_{i:03d}.png")
+    logger.info("saved -> %s", out)
+
+
 def _cmd_generate(args: argparse.Namespace) -> None:
+    model = args.model or args.model_pos
+    if model is None:
+        raise SystemExit("pass a model: --model sdxl|flux|flux-dev|wan (or a path with --labels)")
+
+    # Legacy class-conditional path: a saved DiffusionPipeline folder driven by --labels.
+    if args.prompt is None:
+        _generate_class_conditional(model, args)
+        return
+
+    key, spec = _resolve_model(model)
+    if args.modality and args.modality != spec.modality:
+        raise SystemExit(f"model {key!r} is a {spec.modality} model, not {args.modality!r}")
+
+    folder = args.checkpoint or spec.local
+    if args.download:
+        _download(spec, folder)
+    if not Path(folder).exists():
+        raise SystemExit(
+            f"checkpoint not found at {folder!r}. Run again with --download to fetch "
+            f"{spec.repo!r}, or pass --checkpoint PATH."
+        )
+
+    # Defaults for height/width come from --size (square); per-modality if unset.
+    size = args.size if args.size is not None else (256 if spec.modality == "video" else 1024)
+    args.height = args.height if args.height is not None else size
+    args.width = args.width if args.width is not None else size
+
+    logger.info("generating %s with %s …", spec.modality, key)
+    out_array = spec.run(folder, args)
+    mx.eval(out_array)
+    default_ext = ".gif" if spec.modality == "video" else ".png"
+    out = Path(args.out) if args.out else Path(f"{key}{default_ext}")
+    _save_output(out, out_array, spec.modality, args.fps)
+
+
+def _download(spec: _ModelSpec, folder: str) -> None:
+    from huggingface_hub import snapshot_download
+
+    logger.info("downloading %s -> %s …", spec.repo, folder)
+    snapshot_download(spec.repo, local_dir=folder, allow_patterns=list(spec.patterns))
+
+
+def _generate_class_conditional(model: str, args: argparse.Namespace) -> None:
     from ..pipelines import DiffusionPipeline
 
-    pipe = DiffusionPipeline.from_pretrained(args.model, dtype=args.dtype, quantize=args.quantize)
+    pipe = DiffusionPipeline.from_pretrained(model, dtype=args.dtype, quantize=args.quantize)
     labels = [int(x) for x in args.labels.split(",")]
     images = pipe(  # type: ignore[operator]  # concrete pipelines are callable
         labels,
-        sample_size=args.size,
-        num_inference_steps=args.steps,
-        guidance_scale=args.guidance,
+        sample_size=args.size if args.size is not None else 32,
+        num_inference_steps=args.steps if args.steps is not None else 50,
+        guidance_scale=args.guidance if args.guidance is not None else 4.0,
         seed=args.seed,
         progress=True,
     )
-    out = Path(args.out)
+    out = Path(args.out) if args.out else Path("outputs")
     out.mkdir(parents=True, exist_ok=True)
     for i in range(images.shape[0]):
         path = out / f"sample_{i:03d}.png"
@@ -133,16 +310,54 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="command", required=True)
 
-    g = sub.add_parser("generate", help="sample images from a saved pipeline")
-    g.add_argument("model", help="local path or Hub repo id")
-    g.add_argument("--labels", default="0", help="comma-separated class labels, e.g. 1,2,3")
-    g.add_argument("--steps", type=int, default=50)
-    g.add_argument("--guidance", type=float, default=4.0)
-    g.add_argument("--size", type=int, default=32)
+    g = sub.add_parser(
+        "generate",
+        help="text-to-image / text-to-video from a named model, or a saved pipeline",
+        description="Examples:\n"
+        '  mlx-diffuser generate --model flux  --prompt "a red fox in snow" --out fox.png\n'
+        '  mlx-diffuser generate --model sdxl  --prompt "a lion at sunset"  --out lion.png\n'
+        '  mlx-diffuser generate --model wan --modality video --prompt "a panda surfing" '
+        "--out panda.gif\n"
+        "  mlx-diffuser generate --model flux --prompt ... --download   # fetch the checkpoint first",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    g.add_argument(
+        "model_pos",
+        nargs="?",
+        default=None,
+        metavar="MODEL",
+        help="(legacy) saved class-conditional pipeline path; prefer --model",
+    )
+    g.add_argument("--model", default=None, help="sdxl | flux | flux-dev | wan (or a path)")
+    g.add_argument("--modality", choices=["image", "video"], default=None, help="cross-check")
+    g.add_argument("--prompt", default=None, help="text prompt (selects the text-to-X path)")
+    g.add_argument("--negative", default=None, help="negative prompt (SDXL / WAN)")
+    g.add_argument("--out", default=None, help="output file (image .png / video .gif)")
+    g.add_argument("--checkpoint", default=None, help="checkpoint dir override")
+    g.add_argument("--download", action="store_true", help="download the checkpoint first")
+    # generation knobs (per-model defaults applied when unset)
+    g.add_argument("--steps", type=int, default=None)
+    g.add_argument("--guidance", type=float, default=None)
+    g.add_argument("--size", type=int, default=None, help="square size; or use --height/--width")
+    g.add_argument("--height", type=int, default=None)
+    g.add_argument("--width", type=int, default=None)
     g.add_argument("--seed", type=int, default=0)
-    g.add_argument("--dtype", default=None)
-    g.add_argument("--quantize", type=int, default=None)
-    g.add_argument("--out", default="outputs")
+    g.add_argument("--quantize", type=int, default=None, help="weight bits (4/8)")
+    g.add_argument(
+        "--cache", type=float, default=None, help="DeepCache interval / FBCache threshold"
+    )
+    g.add_argument("--tile-vae", action="store_true", dest="tile_vae", help="tiled VAE decode")
+    g.add_argument(
+        "--release-text-encoders",
+        action="store_true",
+        dest="release_text_encoders",
+        help="free text encoders before denoising (FLUX)",
+    )
+    g.add_argument("--frames", type=int, default=17, help="video frames (1 + multiple of 4)")
+    g.add_argument("--fps", type=int, default=8, help="video output fps")
+    g.add_argument("--max-seq", type=int, default=None, dest="max_seq", help="FLUX T5 token budget")
+    g.add_argument("--labels", default="0", help="(legacy) class labels, e.g. 1,2,3")
+    g.add_argument("--dtype", default=None, help="(legacy) class-conditional dtype")
     g.set_defaults(func=_cmd_generate)
 
     t = sub.add_parser("train", help="train or fine-tune a DiT on an image folder")

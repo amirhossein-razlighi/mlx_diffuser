@@ -15,6 +15,8 @@ from .base import (
     register_pipeline,
 )
 from .class_conditional import ClassConditionalPipeline
+from .flux import FluxPipeline
+from .sdxl import StableDiffusionXLPipeline
 from .text_to_video import TextToVideoPipeline
 from .wan import WanPipeline
 
@@ -34,6 +36,8 @@ __all__ = [
     "ClassConditionalPipeline",
     "TextToVideoPipeline",
     "WanPipeline",
+    "StableDiffusionXLPipeline",
+    "FluxPipeline",
     "register_models",
     "register_pipeline",
 ]
