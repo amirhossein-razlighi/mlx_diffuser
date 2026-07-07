@@ -8,8 +8,10 @@ decoding all happen on Metal.
 <p align="center">
 <video src="../../assets/ltx2_sample.mp4" width="576" controls loop muted playsinline></video>
 </p>
-<p align="center"><sub><em>Straight from the CLI on an M1 Pro (16 GB):
-<code>mlx-diffuser generate --model ltx-2.3 --prompt "..."</code></em></sub></p>
+<p align="center"><sub><em>"a red fox trotting through fresh snow in a pine forest, low tracking shot,
+golden hour, soft rim light, cinematic" — 768×512, 121 frames (5 s @ 24 fps), 8 steps,
+generated on an M1 Pro (16 GB) straight from the CLI:
+<code>mlx-diffuser generate --model ltx-2.3 --prompt "..."</code> (~110 s/step)</em></sub></p>
 
 ## Components
 
