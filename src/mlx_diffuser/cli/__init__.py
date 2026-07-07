@@ -28,6 +28,10 @@ class _ModelSpec:
     patterns: tuple[str, ...]  # snapshot_download allow_patterns
     run: Callable[[str, argparse.Namespace], mx.array]  # (folder, args) -> (B, ...) array
     aliases: tuple[str, ...] = ()
+    default_hw: tuple[int, int] | None = None  # (height, width) when --size unset
+    default_fps: int = 8
+    video_ext: str = ".gif"
+    download: Callable[[str], None] | None = None  # custom fetch (else snapshot_download)
 
 
 def _diffusers_patterns(*components: str) -> tuple[str, ...]:
@@ -80,7 +84,7 @@ def _run_wan(folder: str, a: argparse.Namespace) -> mx.array:
     return pipe(
         a.prompt,
         negative_prompt=a.negative or "",
-        num_frames=a.frames,
+        num_frames=a.frames if a.frames is not None else 17,
         height=a.height,
         width=a.width,
         num_inference_steps=a.steps if a.steps is not None else 30,
@@ -88,6 +92,31 @@ def _run_wan(folder: str, a: argparse.Namespace) -> mx.array:
         seed=a.seed,
         cache_threshold=a.cache or 0.0,
     )
+
+
+def _run_ltx2(folder: str, a: argparse.Namespace) -> mx.array:
+    from ..pipelines import LTX2Pipeline
+
+    pipe = LTX2Pipeline.from_converted(folder)
+    return pipe(
+        a.prompt,
+        negative_prompt=a.negative or "",
+        height=a.height,
+        width=a.width,
+        num_frames=a.frames if a.frames is not None else 121,
+        frame_rate=a.fps if a.fps is not None else 24,
+        guidance_scale=a.guidance if a.guidance is not None else 1.0,  # distilled: CFG off
+        seed=a.seed,
+        cache_threshold=a.cache or 0.0,
+    )
+
+
+def _download_ltx2(folder: str) -> None:
+    from ..converters.ltx2 import convert_ltx2_checkpoint
+
+    # LTX-2.3 ships as one 46 GB file + a 48 GB fp32 Gemma: stream-convert to
+    # 4-bit MLX components instead of downloading the originals to disk.
+    convert_ltx2_checkpoint(folder)
 
 
 MODELS: dict[str, _ModelSpec] = {
@@ -121,6 +150,18 @@ MODELS: dict[str, _ModelSpec] = {
         _run_wan,
         aliases=("wan",),
     ),
+    "ltx-2.3": _ModelSpec(
+        "video",
+        "Lightricks/LTX-2.3",
+        "checkpoints/ltx-2.3-distilled-mlx",
+        (),  # custom streaming download+conversion (see _download_ltx2)
+        _run_ltx2,
+        aliases=("ltx", "ltx2"),
+        default_hw=(512, 768),
+        default_fps=24,
+        video_ext=".mp4",
+        download=_download_ltx2,
+    ),
 }
 
 
@@ -135,7 +176,9 @@ def _resolve_model(name: str) -> tuple[str, _ModelSpec]:
 
 def _save_output(out: Path, array: mx.array, modality: str, fps: int) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
-    if modality == "video":  # (B, T, H, W, 3) -> animated GIF
+    if modality == "video" and out.suffix.lower() == ".mp4":  # (B, T, H, W, 3) -> H.264
+        _save_mp4(out, array[0], fps)
+    elif modality == "video":  # (B, T, H, W, 3) -> animated GIF
         frames = [to_pil(array[0, i]) for i in range(array.shape[1])]
         frames[0].save(
             out, save_all=True, append_images=frames[1:], duration=int(1000 / fps), loop=0
@@ -148,6 +191,43 @@ def _save_output(out: Path, array: mx.array, modality: str, fps: int) -> None:
             for i in range(array.shape[0]):
                 to_pil(array[i]).save(out / f"sample_{i:03d}.png")
     logger.info("saved -> %s", out)
+
+
+def _save_mp4(out: Path, frames: mx.array, fps: int) -> None:
+    """Encode ``(T, H, W, 3)`` frames in [-1, 1] to H.264 via the ffmpeg binary."""
+    import shutil
+    import subprocess
+
+    import numpy as np
+
+    if shutil.which("ffmpeg") is None:
+        raise SystemExit("saving .mp4 needs ffmpeg on PATH (brew install ffmpeg), or use .gif")
+    u8 = np.array(mx.clip((frames + 1.0) * 127.5, 0, 255).astype(mx.uint8))
+    t, h, w, _ = u8.shape
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-loglevel",
+        "error",
+        "-f",
+        "rawvideo",
+        "-pix_fmt",
+        "rgb24",
+        "-s",
+        f"{w}x{h}",
+        "-r",
+        str(fps),
+        "-i",
+        "-",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-crf",
+        "18",
+        str(out),
+    ]
+    subprocess.run(cmd, input=u8.tobytes(), check=True)
 
 
 def _cmd_generate(args: argparse.Namespace) -> None:
@@ -173,23 +253,33 @@ def _cmd_generate(args: argparse.Namespace) -> None:
             f"{spec.repo!r}, or pass --checkpoint PATH."
         )
 
-    # Defaults for height/width come from --size (square); per-modality if unset.
-    size = args.size if args.size is not None else (256 if spec.modality == "video" else 1024)
-    args.height = args.height if args.height is not None else size
-    args.width = args.width if args.width is not None else size
+    # Defaults for height/width come from --size (square), the model spec, or modality.
+    if args.size is not None:
+        default_h = default_w = args.size
+    elif spec.default_hw is not None:
+        default_h, default_w = spec.default_hw
+    else:
+        default_h = default_w = 256 if spec.modality == "video" else 1024
+    args.height = args.height if args.height is not None else default_h
+    args.width = args.width if args.width is not None else default_w
 
     logger.info("generating %s with %s …", spec.modality, key)
     out_array = spec.run(folder, args)
     mx.eval(out_array)
-    default_ext = ".gif" if spec.modality == "video" else ".png"
+    default_ext = spec.video_ext if spec.modality == "video" else ".png"
     out = Path(args.out) if args.out else Path(f"{key}{default_ext}")
-    _save_output(out, out_array, spec.modality, args.fps)
+    _save_output(
+        out, out_array, spec.modality, args.fps if args.fps is not None else spec.default_fps
+    )
 
 
 def _download(spec: _ModelSpec, folder: str) -> None:
+    logger.info("downloading %s -> %s …", spec.repo, folder)
+    if spec.download is not None:
+        spec.download(folder)
+        return
     from huggingface_hub import snapshot_download
 
-    logger.info("downloading %s -> %s …", spec.repo, folder)
     snapshot_download(spec.repo, local_dir=folder, allow_patterns=list(spec.patterns))
 
 
@@ -328,7 +418,9 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="MODEL",
         help="(legacy) saved class-conditional pipeline path; prefer --model",
     )
-    g.add_argument("--model", default=None, help="sdxl | flux | flux-dev | wan (or a path)")
+    g.add_argument(
+        "--model", default=None, help="sdxl | flux | flux-dev | wan | ltx-2.3 (or a path)"
+    )
     g.add_argument("--modality", choices=["image", "video"], default=None, help="cross-check")
     g.add_argument("--prompt", default=None, help="text prompt (selects the text-to-X path)")
     g.add_argument("--negative", default=None, help="negative prompt (SDXL / WAN)")
@@ -353,8 +445,13 @@ def build_parser() -> argparse.ArgumentParser:
         dest="release_text_encoders",
         help="free text encoders before denoising (FLUX)",
     )
-    g.add_argument("--frames", type=int, default=17, help="video frames (1 + multiple of 4)")
-    g.add_argument("--fps", type=int, default=8, help="video output fps")
+    g.add_argument(
+        "--frames",
+        type=int,
+        default=None,
+        help="video frames (WAN: 1+4k, default 17; LTX: 1+8k, default 121)",
+    )
+    g.add_argument("--fps", type=int, default=None, help="video fps (WAN default 8, LTX 24)")
     g.add_argument("--max-seq", type=int, default=None, dest="max_seq", help="FLUX T5 token budget")
     g.add_argument("--labels", default="0", help="(legacy) class labels, e.g. 1,2,3")
     g.add_argument("--dtype", default=None, help="(legacy) class-conditional dtype")

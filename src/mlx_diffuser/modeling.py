@@ -81,15 +81,36 @@ class ModelMixin(nn.Module, Generic[C]):
             config = config.replace(**config_overrides)
 
         model = cls(config)  # type: ignore[call-arg]  # subclasses take a config
-        model.load_weights(str(local / WEIGHTS_NAME), strict=strict)
+
+        # Pre-quantized checkpoints (written by the converters) carry a
+        # quantization.json sidecar: quantize the skeleton *before* loading so
+        # the parameter tree matches the stored weight/scales/biases triplets.
+        quant_marker = local / "quantization.json"
+        if quant_marker.exists():
+            import json
+
+            spec = json.loads(quant_marker.read_text())
+            quantize_module(model, bits=spec["bits"], group_size=spec["group_size"])
+
+        weights_file = local / WEIGHTS_NAME
+        if weights_file.exists():
+            model.load_weights(str(weights_file), strict=strict)
+        else:  # sharded checkpoint (model-*.safetensors)
+            from .converters.base import load_safetensors_folder
+
+            merged = load_safetensors_folder(local)
+            model.load_weights(list(merged.items()), strict=strict)
+            del merged
 
         resolved_dtype = as_dtype(dtype)
         if resolved_dtype is not None:
             model.set_dtype(resolved_dtype)
-        if quantize is not None:
+        if quantize is not None and not quant_marker.exists():
             quantize_module(model, bits=quantize, group_size=quant_group_size)
 
-        mx.eval(model.parameters())
+        from .converters.base import _eval_in_chunks  # local import avoids a cycle
+
+        _eval_in_chunks(model.parameters())
         model.eval()
         return model
 
