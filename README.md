@@ -45,6 +45,11 @@ in MLX — see the [SDXL guide](https://amirhossein-razlighi.github.io/mlx_diffu
 and the [FLUX guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/flux/). The
 12B FLUX.1 runs 4-bit and fits a 16 GB Mac.
 
+**LTX-2.3** — Lightricks' 22B joint audio-video model — also runs natively: the ~94 GB
+official release is *stream-converted* to ~20 GB of 4-bit MLX components (the originals
+never touch disk) and generation is staged so a 16 GB Mac peaks at one component at a
+time. See the [LTX-2.3 guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/ltx2/).
+
 ---
 
 If you know PyTorch and 🤗 `diffusers`, you already know this library:

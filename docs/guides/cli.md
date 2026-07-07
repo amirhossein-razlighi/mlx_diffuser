@@ -18,6 +18,10 @@ mlx-diffuser generate --model flux --prompt "a red fox in snow" --tile-vae --out
 # video (WAN 2.1)
 mlx-diffuser generate --model wan --modality video \
     --prompt "a panda surfing a wave" --frames 17 --out panda.gif
+
+# video (LTX-2.3 — 22B, 8 distilled steps, saves an .mp4)
+mlx-diffuser generate --model ltx-2.3 \
+    --prompt "a red fox trotting through fresh snow, golden hour" --out fox.mp4
 ```
 
 | `--model` | modality | notes |
@@ -26,13 +30,16 @@ mlx-diffuser generate --model wan --modality video \
 | `flux` / `flux-schnell` | image | 4 steps, 4-bit by default |
 | `flux-dev` | image | ~50 steps, `--guidance 3.5` |
 | `wan` / `wan-1.3b` | video | saves an animated GIF |
+| `ltx-2.3` / `ltx` | video | 768×512, 121 frames, 24 fps; saves `.mp4` (needs ffmpeg) |
 
 The first run needs the checkpoint locally — add `--download` to fetch it into
-`checkpoints/` (or point at one with `--checkpoint PATH`). Common options:
+`checkpoints/` (or point at one with `--checkpoint PATH`). For LTX-2.3,
+`--download` *stream-converts* the ~90 GB originals into ~20 GB of 4-bit MLX
+components (see the [LTX-2.3 guide](ltx2.md)). Common options:
 `--steps`, `--guidance`, `--size` (or `--height`/`--width`), `--seed`, `--negative`,
 `--quantize`, `--cache`, `--tile-vae`, and (video) `--frames`/`--fps`. Per-model defaults
 are applied when you leave a knob unset. The output extension picks the format
-(`.png` image, `.gif` video).
+(`.png` image, `.gif` or `.mp4` video).
 
 ```bash
 mlx-diffuser generate --model flux --prompt "..." --download   # fetch then generate

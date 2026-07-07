@@ -57,3 +57,21 @@
 ::: mlx_diffuser.models.T5EncoderModel
 
 ::: mlx_diffuser.models.T5Config
+
+## LTX-2.3 (weight-compatible ports)
+
+::: mlx_diffuser.models.LTX2Transformer3DModel
+
+::: mlx_diffuser.models.LTX2TransformerConfig
+
+::: mlx_diffuser.models.LTX2TextConnectors
+
+::: mlx_diffuser.models.LTX2ConnectorsConfig
+
+::: mlx_diffuser.models.LTX2VideoDecoder
+
+::: mlx_diffuser.models.LTX2VAEDecoderConfig
+
+::: mlx_diffuser.models.Gemma3TextEncoder
+
+::: mlx_diffuser.models.Gemma3Config
