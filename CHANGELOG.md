@@ -4,6 +4,55 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.6] — 2026-07-08
+
+### Added
+
+- **LTX-2.3 audio** — the pipeline now decodes the jointly-denoised audio
+  latents into sound: `LTX2AudioDecoder` (the audio VAE decoder: latent tokens
+  → stereo log-mel spectrogram) and `LTX2Vocoder` (ltx-core's
+  `VocoderWithBWE`: a BigVGAN-v2 generator to 16 kHz plus a bandwidth-extension
+  generator to **48 kHz stereo**, using the checkpoint's own causal STFT
+  bases). Both ports are verified **bit-exact** against ltx-core (cosine 1.0).
+  `LTX2Pipeline` returns `(video, audio)` and the CLI muxes the track into the
+  mp4 (AAC via ffmpeg) — `.gif` outputs get a `.wav` sidecar. The streaming
+  converter picks up the two components (~320 MB bf16) and re-running it on an
+  existing checkpoint folder converts just what's missing.
+
+## [0.1.5] — 2026-07-07
+
+### Added
+
+- **LTX-2.3 (real checkpoints)** — faithful, weight-compatible MLX ports of
+  Lightricks' 22B-parameter joint audio-video model:
+  - `LTX2Transformer3DModel` — 48 dual-stream blocks (video 4096-d + audio
+    2048-d) with per-modality self-attention, text cross-attention, and
+    bidirectional audio↔video cross-attention; LTX-2.3's split RoPE, gated
+    attention, and cross-attention adaLN. `LTX2TextConnectors` (per-modality
+    projections of all 49 Gemma-3 hidden states + 8-block 1D transformers with
+    learnable registers), `Gemma3TextEncoder` (the Gemma-3-12B text tower,
+    returning every hidden state), and `LTX2VideoDecoder` (the 32×/8× causal
+    video VAE decoder). Each is verified **bit-exact** against its reference
+    (diffusers / transformers / ltx-core) on tiny configs (cosine 1.0).
+  - `LTX2Pipeline` — staged text-to-video: the 4-bit Gemma text stack encodes
+    and is freed before the 4-bit transformer loads; the transformer is freed
+    before the VAE decodes, so a 16 GB Mac peaks at one stage, not the sum.
+    Runs the distilled 8-step, CFG-free sigma schedule (with optional x0-space
+    CFG for the dev weights). Audio latents are denoised jointly for fidelity
+    (no vocoder port yet — output is video-only).
+  - **Streaming converter** — LTX-2.3 ships as a single ~46 GB file plus a
+    ~48 GB fp32 Gemma; `convert_ltx2_checkpoint` reads the bundle remotely over
+    coalesced HTTP range requests and the Gemma shards one at a time,
+    quantizing tensors as they arrive into ~20 GB of sharded MLX components —
+    the originals never touch disk. `ModelMixin.from_pretrained` now loads
+    pre-quantized (`quantization.json`) and sharded checkpoints.
+  - CLI: `mlx-diffuser generate --model ltx-2.3 --prompt "…" --out video.mp4`
+    (`--download` runs the streaming conversion; `.mp4` written via ffmpeg),
+    plus `examples/ltx2_text_to_video.py` and a docs guide.
+- Top-level exports for `StableDiffusionXLPipeline`, `FluxPipeline`, and
+  `LTX2Pipeline` (`from mlx_diffuser import FluxPipeline` now works as the
+  docs showed).
+
 ## [0.1.4] — 2026-06-25
 
 ### Added

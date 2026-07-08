@@ -12,6 +12,8 @@
 
 ::: mlx_diffuser.pipelines.FluxPipeline
 
+::: mlx_diffuser.pipelines.LTX2Pipeline
+
 ## Inference caching
 
 ::: mlx_diffuser.caching.FirstBlockCache

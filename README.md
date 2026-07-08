@@ -45,6 +45,16 @@ in MLX — see the [SDXL guide](https://amirhossein-razlighi.github.io/mlx_diffu
 and the [FLUX guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/flux/). The
 12B FLUX.1 runs 4-bit and fits a 16 GB Mac.
 
+<p align="center"><img src="docs/assets/ltx2_fox.gif" width="480" alt="LTX-2.3 fox in snow"></p>
+<p align="center"><sub><em>"a red fox trotting through fresh snow in a pine forest, low tracking shot, golden hour" — LTX-2.3 (22B), 768×512, 121 frames, 8 steps, 4-bit</em></sub></p>
+
+**LTX-2.3** — Lightricks' 22B joint audio-video model — also runs natively, sound
+included: video and audio latents are denoised jointly and the 48 kHz stereo track is
+muxed into the mp4. The ~94 GB official release is *stream-converted* to ~20 GB of
+4-bit MLX components (the originals never touch disk) and generation is staged so a
+16 GB Mac peaks at one component at a time. See the
+[LTX-2.3 guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/ltx2/).
+
 ---
 
 If you know PyTorch and 🤗 `diffusers`, you already know this library:

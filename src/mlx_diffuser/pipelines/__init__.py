@@ -16,6 +16,7 @@ from .base import (
 )
 from .class_conditional import ClassConditionalPipeline
 from .flux import FluxPipeline
+from .ltx2 import LTX2Pipeline
 from .sdxl import StableDiffusionXLPipeline
 from .text_to_video import TextToVideoPipeline
 from .wan import WanPipeline
@@ -38,6 +39,7 @@ __all__ = [
     "WanPipeline",
     "StableDiffusionXLPipeline",
     "FluxPipeline",
+    "LTX2Pipeline",
     "register_models",
     "register_pipeline",
 ]

@@ -26,6 +26,9 @@ from .perf import compile_model, memory_report, set_memory_limit
 from .pipelines import (
     ClassConditionalPipeline,
     DiffusionPipeline,
+    FluxPipeline,
+    LTX2Pipeline,
+    StableDiffusionXLPipeline,
     TextToVideoPipeline,
     WanPipeline,
 )
@@ -65,6 +68,9 @@ __all__ = [
     "ClassConditionalPipeline",
     "TextToVideoPipeline",
     "WanPipeline",
+    "StableDiffusionXLPipeline",
+    "FluxPipeline",
+    "LTX2Pipeline",
     "DiffusionTrainer",
     "EMA",
     "inject_lora",
