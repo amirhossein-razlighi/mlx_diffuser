@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.6] — 2026-07-08
+
+### Added
+
+- **LTX-2.3 audio** — the pipeline now decodes the jointly-denoised audio
+  latents into sound: `LTX2AudioDecoder` (the audio VAE decoder: latent tokens
+  → stereo log-mel spectrogram) and `LTX2Vocoder` (ltx-core's
+  `VocoderWithBWE`: a BigVGAN-v2 generator to 16 kHz plus a bandwidth-extension
+  generator to **48 kHz stereo**, using the checkpoint's own causal STFT
+  bases). Both ports are verified **bit-exact** against ltx-core (cosine 1.0).
+  `LTX2Pipeline` returns `(video, audio)` and the CLI muxes the track into the
+  mp4 (AAC via ffmpeg) — `.gif` outputs get a `.wav` sidecar. The streaming
+  converter picks up the two components (~320 MB bf16) and re-running it on an
+  existing checkpoint folder converts just what's missing.
+
 ## [0.1.5] — 2026-07-07
 
 ### Added

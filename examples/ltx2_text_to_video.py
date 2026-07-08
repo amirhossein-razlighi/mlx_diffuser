@@ -1,6 +1,7 @@
-"""Text-to-video with LTX-2.3 on Apple silicon, end-to-end in MLX.
+"""Text-to-video-with-audio with LTX-2.3 on Apple silicon, end-to-end in MLX.
 
-LTX-2.3 is Lightricks' 22B-parameter joint audio-video model. The official
+LTX-2.3 is Lightricks' 22B-parameter joint audio-video model: it generates the
+soundtrack together with the frames, and the mp4 gets a 48 kHz stereo track. The official
 release is a single ~46 GB checkpoint plus a ~48 GB fp32 Gemma-3-12B text
 encoder — far bigger than a 16 GB Mac. `--download` therefore *streams* the
 originals over HTTP and quantizes each tensor as it arrives, writing ~20 GB of
@@ -35,15 +36,29 @@ from mlx_diffuser.pipelines import LTX2Pipeline
 LOCAL = "checkpoints/ltx-2.3-distilled-mlx"
 
 
-def save_mp4(frames: mx.array, path: str, fps: float) -> None:
+def save_mp4(frames: mx.array, audio: mx.array, path: str, fps: float) -> None:
+    """Encode frames + the generated 48 kHz stereo track into one mp4."""
+    import tempfile
+    import wave
+
     u8 = np.array(mx.clip((frames + 1.0) * 127.5, 0, 255).astype(mx.uint8))
     t, h, w, _ = u8.shape
-    cmd = [
-        "ffmpeg", "-y", "-loglevel", "error",
-        "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}", "-r", str(fps), "-i", "-",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", path,
-    ]  # fmt: skip
-    subprocess.run(cmd, input=u8.tobytes(), check=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        wav = f"{tmp}/audio.wav"
+        pcm = np.array(mx.clip(audio, -1.0, 1.0) * 32767.0).astype("<i2")
+        with wave.open(wav, "wb") as f:
+            f.setnchannels(pcm.shape[0])
+            f.setsampwidth(2)
+            f.setframerate(48000)
+            f.writeframes(pcm.T.tobytes())
+        cmd = [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}", "-r", str(fps), "-i", "-",
+            "-i", wav,
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18",
+            "-c:a", "aac", "-b:a", "192k", "-shortest", path,
+        ]  # fmt: skip
+        subprocess.run(cmd, input=u8.tobytes(), check=True)
 
 
 def main() -> None:
@@ -74,7 +89,7 @@ def main() -> None:
     pipe = LTX2Pipeline.from_converted(LOCAL)
 
     start = time.perf_counter()
-    video = pipe(
+    video, audio = pipe(
         args.prompt,
         height=args.height,
         width=args.width,
@@ -87,7 +102,7 @@ def main() -> None:
     mem = memory_report()
     print(f"\ngenerated {tuple(video.shape)} in {secs:.0f}s  |  peak {mem['peak_gb']:.2f} GB")
 
-    save_mp4(video[0], args.out, args.fps)
+    save_mp4(video[0], audio, args.out, args.fps)
     print(f"saved -> {args.out}")
 
 
