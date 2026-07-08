@@ -16,8 +16,8 @@ optional ``quantization.json``, sharded weights) that
 ``ModelMixin.from_pretrained`` loads directly — quantizing the skeleton first,
 so nothing bigger than the quantized model is ever resident.
 
-The audio branch of the bundle (audio VAE + vocoder) and the VAE encoder are
-skipped: text-to-video only decodes video latents.
+Only the decode path is converted: the video and audio VAE *encoders* are
+skipped (text-to-video never encodes pixels or waveforms).
 """
 
 from __future__ import annotations
@@ -172,6 +172,34 @@ def map_vae_key(key: str) -> str | None:
     return None  # vae.encoder / other statistics / audio_vae / vocoder
 
 
+def map_audio_decoder_key(key: str) -> str | None:
+    if key == "audio_vae.per_channel_statistics.mean-of-means":
+        return "latents_mean"
+    if key == "audio_vae.per_channel_statistics.std-of-means":
+        return "latents_std"
+    if key.startswith("audio_vae.decoder."):
+        return key.removeprefix("audio_vae.decoder.")
+    return None  # audio_vae.encoder
+
+
+def map_vocoder_key(key: str) -> str | None:
+    # inverse STFT basis is unused (we only analyze, never invert)
+    if not key.startswith("vocoder.") or key.endswith("inverse_basis"):
+        return None
+    return key.removeprefix("vocoder.")
+
+
+def convert_audio_tensor(key: str, tensor: mx.array) -> mx.array:
+    """torch conv kernels -> MLX channels-last layouts (audio stack)."""
+    if tensor.ndim == 4:  # Conv2d (Cout, Cin, H, W) -> (Cout, H, W, Cin)
+        return tensor.transpose(0, 2, 3, 1)
+    if tensor.ndim == 3 and key.endswith(".weight"):
+        if ".ups." in key:  # ConvTranspose1d (Cin, Cout, K) -> (Cout, K, Cin)
+            return tensor.transpose(1, 2, 0)
+        return tensor.transpose(0, 2, 1)  # Conv1d (Cout, Cin, K) -> (Cout, K, Cin)
+    return tensor  # anti-alias filters, STFT/mel bases, snake params, biases
+
+
 def map_gemma_key(key: str) -> str | None:
     prefix = "language_model.model."
     if key.startswith(prefix):
@@ -288,11 +316,19 @@ def convert_ltx2_checkpoint(
     """Stream-convert LTX-2.3 into an MLX checkpoint folder (~20 GB on disk).
 
     Produces ``transformer/`` (quantized), ``connectors/`` (quantized),
-    ``vae_decoder/`` (bf16), ``text_encoder/`` (quantized Gemma-3-12B), and
-    ``tokenizer/``. Skips the audio stack and the VAE encoder. Needs no
-    PyTorch and never holds a full-precision component in RAM or on disk.
+    ``vae_decoder/``, ``audio_decoder/`` and ``vocoder/`` (bf16),
+    ``text_encoder/`` (quantized Gemma-3-12B), and ``tokenizer/``. Skips the
+    VAE encoders. Needs no PyTorch and never holds a full-precision component
+    in RAM or on disk. Already-converted components are skipped, so re-running
+    against an existing folder just fills in what's missing.
     """
     from ..models.autoencoder_kl_ltx2 import LTX2VAEDecoderConfig, LTX2VideoDecoder
+    from ..models.ltx2_audio import (
+        LTX2AudioDecoder,
+        LTX2AudioDecoderConfig,
+        LTX2Vocoder,
+        LTX2VocoderConfig,
+    )
     from ..models.ltx2_connectors import LTX2ConnectorsConfig, LTX2TextConnectors
     from ..models.ltx2_transformer import LTX2Transformer3DModel, LTX2TransformerConfig
 
@@ -304,6 +340,13 @@ def convert_ltx2_checkpoint(
     # Small components first so a mapping problem surfaces within seconds, not
     # after streaming 40 GB of transformer weights.
     components: list[tuple[str, ModelMixin, Callable[[str], str | None], int | None]] = [
+        (
+            "audio_decoder",
+            LTX2AudioDecoder(LTX2AudioDecoderConfig.ltx_2_3()),
+            map_audio_decoder_key,
+            None,
+        ),
+        ("vocoder", LTX2Vocoder(LTX2VocoderConfig.ltx_2_3()), map_vocoder_key, None),
         ("vae_decoder", LTX2VideoDecoder(LTX2VAEDecoderConfig.ltx_2_3()), map_vae_key, None),
         (
             "connectors",
@@ -331,7 +374,10 @@ def convert_ltx2_checkpoint(
         )
         done = 0
         for key, tensor in remote.iter_tensors(keys):
-            writer.add(key_map(key), tensor)  # type: ignore[arg-type]  # keys pre-filtered
+            mapped: str = key_map(key)  # type: ignore[assignment]  # keys pre-filtered
+            if name in ("audio_decoder", "vocoder"):
+                tensor = convert_audio_tensor(mapped, tensor)
+            writer.add(mapped, tensor)
             done += remote.header[key]["data_offsets"][1] - remote.header[key]["data_offsets"][0]
             print(f"  {name}: {done / 1e9:.1f}/{total / 1e9:.1f} GB", end="\r", flush=True)
         print()

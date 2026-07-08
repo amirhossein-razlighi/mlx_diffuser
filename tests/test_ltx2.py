@@ -8,20 +8,27 @@ import numpy as np
 from mlx_diffuser.caching import FirstBlockCache
 from mlx_diffuser.converters.ltx2 import (
     _ComponentWriter,
+    convert_audio_tensor,
+    map_audio_decoder_key,
     map_connectors_key,
     map_gemma_key,
     map_transformer_key,
     map_vae_key,
+    map_vocoder_key,
 )
 from mlx_diffuser.models import (
     Gemma3Config,
     Gemma3TextEncoder,
+    LTX2AudioDecoder,
+    LTX2AudioDecoderConfig,
     LTX2ConnectorsConfig,
     LTX2TextConnectors,
     LTX2Transformer3DModel,
     LTX2TransformerConfig,
     LTX2VAEDecoderConfig,
     LTX2VideoDecoder,
+    LTX2Vocoder,
+    LTX2VocoderConfig,
 )
 
 
@@ -80,6 +87,31 @@ def tiny_vae(**kw) -> LTX2VAEDecoderConfig:
     )
     base.update(kw)
     return LTX2VAEDecoderConfig(**base)
+
+
+def tiny_audio_decoder(**kw) -> LTX2AudioDecoderConfig:
+    # packed latent channels = z * mel_bins / factor = 2*8/4 = 4 (tiny transformer's audio width)
+    base = dict(z_channels=2, base_channels=4, ch_mult=(1, 2, 4), num_res_blocks=1, mel_bins=8)
+    base.update(kw)
+    return LTX2AudioDecoderConfig(**base)
+
+
+def tiny_vocoder(**kw) -> LTX2VocoderConfig:
+    base = dict(
+        mel_bins=8,
+        upsample_rates=(2, 2),  # mel frame -> 4 samples (matches stft_hop_length)
+        upsample_kernel_sizes=(4, 4),
+        upsample_initial_channel=16,
+        bwe_upsample_rates=(4, 3),  # hop * (48k/16k) = 12
+        bwe_upsample_kernel_sizes=(8, 9),  # kernel - stride must stay even
+        bwe_upsample_initial_channel=8,
+        resblock_kernel_sizes=(3,),
+        resblock_dilations=((1, 3, 5),),
+        stft_n_fft=16,
+        stft_hop_length=4,
+    )
+    base.update(kw)
+    return LTX2VocoderConfig(**base)
 
 
 def tiny_gemma(**kw) -> Gemma3Config:
@@ -147,6 +179,23 @@ def test_vae_decoder_shape():
     assert video.shape == (1, 17, 64, 64, 3)
 
 
+def test_audio_decoder_shape():
+    dec = LTX2AudioDecoder(tiny_audio_decoder())
+    mel = dec.decode(mx.random.normal((1, 5, 4)))
+    # 4x temporal upsampling minus the causal offset: 5*4 - 3 = 17 mel frames
+    assert mel.shape == (1, 17, 8, 2)
+    assert bool(mx.all(mx.isfinite(mel)))
+
+
+def test_vocoder_shape():
+    voc = LTX2Vocoder(tiny_vocoder())
+    wav = voc(mx.random.normal((1, 12, 8, 2)) * 0.1)
+    # 12 mel frames -> 48 samples at 16 kHz -> x3 bandwidth extension
+    assert wav.shape == (1, 144, 2)
+    assert bool(mx.all(mx.isfinite(wav)))
+    assert float(mx.abs(wav).max()) <= 1.0
+
+
 def test_gemma_hidden_states():
     model = Gemma3TextEncoder(tiny_gemma())
     ids = mx.array([[1, 2, 3, 4, 5, 6]])
@@ -203,6 +252,29 @@ def test_converter_key_mapping():
     )
     assert map_gemma_key("vision_tower.vision_model.embeddings.patch_embedding.weight") is None
 
+    assert (
+        map_audio_decoder_key("audio_vae.decoder.up.1.upsample.conv.conv.weight")
+        == "up.1.upsample.conv.conv.weight"
+    )
+    assert map_audio_decoder_key("audio_vae.per_channel_statistics.std-of-means") == "latents_std"
+    assert map_audio_decoder_key("audio_vae.encoder.conv_in.conv.weight") is None
+
+    assert map_vocoder_key("vocoder.vocoder.ups.0.weight") == "vocoder.ups.0.weight"
+    assert map_vocoder_key("vocoder.bwe_generator.conv_pre.bias") == "bwe_generator.conv_pre.bias"
+    assert map_vocoder_key("vocoder.mel_stft.stft_fn.inverse_basis") is None
+    assert map_vocoder_key("model.diffusion_model.proj_in.weight") is None
+
+
+def test_convert_audio_tensor_layouts():
+    conv2d = mx.zeros((8, 4, 3, 3))  # torch (Cout, Cin, H, W)
+    assert convert_audio_tensor("conv_in.conv.weight", conv2d).shape == (8, 3, 3, 4)
+    conv1d = mx.zeros((8, 4, 7))  # torch (Cout, Cin, K)
+    assert convert_audio_tensor("vocoder.conv_pre.weight", conv1d).shape == (8, 7, 4)
+    convt1d = mx.zeros((8, 4, 11))  # torch ConvTranspose1d (Cin, Cout, K)
+    assert convert_audio_tensor("vocoder.ups.0.weight", convt1d).shape == (4, 11, 8)
+    filt = mx.zeros((1, 1, 12))  # anti-alias filter buffers pass through
+    assert convert_audio_tensor("vocoder.act_post.upsample.filter", filt).shape == (1, 1, 12)
+
 
 def test_component_writer_quantized_roundtrip(tmp_path):
     """_ComponentWriter output loads back through from_pretrained (pre-quantized)."""
@@ -241,6 +313,8 @@ def test_pipeline_end_to_end_tiny(tmp_path, monkeypatch):
         ),
         ("transformer", LTX2Transformer3DModel(tiny_transformer()), None),
         ("vae_decoder", LTX2VideoDecoder(tiny_vae(latent_channels=8)), None),
+        ("audio_decoder", LTX2AudioDecoder(tiny_audio_decoder()), None),
+        ("vocoder", LTX2Vocoder(tiny_vocoder()), None),
     ]
     for name, model, bits in specs:
         writer = _ComponentWriter(model, tmp_path / name, quantize=bits, group_size=32)
@@ -265,6 +339,9 @@ def test_pipeline_end_to_end_tiny(tmp_path, monkeypatch):
     pipe = LTX2Pipeline(tmp_path)
     monkeypatch.setattr(pipe, "_load_tokenizer", lambda: _StubTokenizer())
     # tiny transformer: in_channels=8, caption dims 12/8; tiny vae: 8 latent channels
-    video = pipe("a tiny test", height=64, width=64, num_frames=9, seed=0)
+    video, audio = pipe("a tiny test", height=64, width=64, num_frames=9, seed=0)
     assert video.shape == (1, 9, 64, 64, 3)
     assert bool(mx.all(mx.isfinite(video)))
+    # 9/24 s -> 9 audio latents -> 33 mel frames -> 132 samples @16k -> x3 to 48 kHz
+    assert audio.shape == (2, 396)
+    assert bool(mx.all(mx.isfinite(audio)))

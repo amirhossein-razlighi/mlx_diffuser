@@ -1,15 +1,16 @@
-"""LTX2Pipeline: text-to-video with LTX-2.3 on Apple silicon, natively in MLX.
+"""LTX2Pipeline: text-to-video-with-audio with LTX-2.3, natively in MLX.
 
 Wires the Gemma-3-12B text encoder, the LTX-2 text connectors, the 22B
-audio-video diffusion transformer, and the LTX-2 video VAE decoder. LTX-2
+audio-video diffusion transformer, and the decoders of both modalities. LTX-2
 denoises video and audio latents *jointly* (the streams exchange information
-through per-block cross-attention); this pipeline runs both streams faithfully
-and decodes the video (the audio latents are discarded — no vocoder port yet).
+through per-block cross-attention); the video latents decode through the video
+VAE and the audio latents through the audio VAE decoder + BigVGAN vocoder into
+a 48 kHz stereo waveform.
 
 The distilled checkpoint needs just 8 steps at CFG=1 with a fixed sigma
 schedule. To fit 16 GB of unified memory the pipeline is *staged*: the text
 stack (4-bit Gemma + connectors) is loaded, used, and freed before the 4-bit
-transformer loads; the transformer is freed before the VAE decodes. Peak
+transformer loads; the transformer is freed before the decoders run. Peak
 memory therefore tracks the largest single stage, not the sum.
 
 Load from a checkpoint folder produced by
@@ -27,6 +28,7 @@ import numpy as np
 from ..caching import FirstBlockCache
 from ..models.autoencoder_kl_ltx2 import LTX2VideoDecoder
 from ..models.gemma3 import Gemma3TextEncoder
+from ..models.ltx2_audio import LTX2AudioDecoder, LTX2Vocoder
 from ..models.ltx2_connectors import LTX2TextConnectors
 from ..models.ltx2_transformer import LTX2Transformer3DModel
 from .wan import _DenoiseProgress
@@ -39,22 +41,40 @@ MAX_PROMPT_TOKENS = 1024  # Gemma prompts are left-padded to this fixed budget
 # Audio latent rate (16 kHz mel spectrogram, 4x compressed by the audio VAE).
 AUDIO_LATENTS_PER_SECOND = 16000 / 160 / 4  # sampling_rate / hop_length / compression
 
+AUDIO_SAMPLE_RATE = 48000  # the vocoder's bandwidth-extended output rate
+
 
 class LTX2Pipeline:
-    """LTX-2.3 text-to-video (channels-last; returns ``(1, F, H, W, 3)`` in [-1, 1])."""
+    """LTX-2.3 text-to-video-with-audio (channels-last MLX tensors).
+
+    Calling the pipeline returns ``(video, audio)``: frames ``(1, F, H, W, 3)``
+    in [-1, 1] and a 48 kHz stereo waveform ``(2, samples)`` in [-1, 1].
+    """
 
     def __init__(self, folder: str | Path):
         self.folder = Path(folder)
-        for sub in ("transformer", "connectors", "vae_decoder", "text_encoder", "tokenizer"):
+        required = (
+            "transformer",
+            "connectors",
+            "vae_decoder",
+            "audio_decoder",
+            "vocoder",
+            "text_encoder",
+            "tokenizer",
+        )
+        for sub in required:
             if not (self.folder / sub).exists():
                 raise FileNotFoundError(
                     f"{self.folder / sub} not found — run the LTX-2.3 conversion first "
-                    "(mlx-diffuser generate --model ltx-2.3 --download)."
+                    "(mlx-diffuser generate --model ltx-2.3 --download; it only fetches "
+                    "components that are missing)."
                 )
         self.text_encoder: Gemma3TextEncoder | None = None
         self.connectors: LTX2TextConnectors | None = None
         self.transformer: LTX2Transformer3DModel | None = None
         self.vae: LTX2VideoDecoder | None = None
+        self.audio_decoder: LTX2AudioDecoder | None = None
+        self.vocoder: LTX2Vocoder | None = None
         self._tokenizer = None
 
     @classmethod
@@ -128,13 +148,16 @@ class LTX2Pipeline:
         cache_threshold: float = 0.0,
         release_stages: bool = True,
         progress: bool = True,
-    ) -> mx.array:
-        """Generate a video ``(1, num_frames, height, width, 3)`` in ``[-1, 1]``.
+    ) -> tuple[mx.array, mx.array]:
+        """Generate ``(video, audio)`` for ``prompt``.
 
-        ``height``/``width`` must be multiples of 32 and ``num_frames`` must be
-        ``1 + 8*k`` (the VAE's compression grid). The distilled model runs its
-        fixed 8-step schedule at ``guidance_scale=1`` (no CFG); values > 1 add a
-        classifier-free pass against ``negative_prompt``.
+        ``video`` is ``(1, num_frames, height, width, 3)`` in [-1, 1]; ``audio``
+        is a 48 kHz stereo waveform ``(2, samples)`` in [-1, 1] covering the
+        same duration. ``height``/``width`` must be multiples of 32 and
+        ``num_frames`` must be ``1 + 8*k`` (the VAE's compression grid). The
+        distilled model runs its fixed 8-step schedule at ``guidance_scale=1``
+        (no CFG); values > 1 add a classifier-free pass against
+        ``negative_prompt``.
 
         ``release_stages`` frees each component when the next stage begins —
         essential on 16 GB machines, only worth disabling for repeated calls on
@@ -209,11 +232,25 @@ class LTX2Pipeline:
             mx.eval(latents, audio_latents)
             bar.update(cache)
         bar.close()
-        del audio_latents  # denoised jointly for fidelity; no vocoder to decode it
         if release_stages:
             self._release("transformer")
 
-        # Stage 3: unpack + denormalize + decode the video latents.
+        # Stage 3: audio decode (mel spectrogram -> 48 kHz stereo waveform).
+        # Small models, but run in float32: bf16 accumulation across the
+        # vocoder's 100+ sequential convolutions audibly degrades the spectrum.
+        if self.audio_decoder is None:
+            self.audio_decoder = LTX2AudioDecoder.from_pretrained(
+                self.folder / "audio_decoder", dtype=mx.float32
+            )
+        if self.vocoder is None:
+            self.vocoder = LTX2Vocoder.from_pretrained(self.folder / "vocoder", dtype=mx.float32)
+        mel = self.audio_decoder.decode(audio_latents.astype(mx.float32))
+        audio = self.vocoder(mel)[0].transpose(1, 0)  # (2, samples) at 48 kHz
+        mx.eval(audio)
+        if release_stages:
+            self._release("audio_decoder", "vocoder")
+
+        # Stage 4: unpack + denormalize + decode the video latents.
         if self.vae is None:
             self.vae = LTX2VideoDecoder.from_pretrained(
                 self.folder / "vae_decoder", dtype=mx.bfloat16
@@ -225,7 +262,7 @@ class LTX2Pipeline:
         mx.eval(video)
         if release_stages:
             self._release("vae")
-        return video
+        return video, audio
 
 
 def _cfg_x0(v: mx.array, sample: mx.array, sigma: float, scale: float) -> mx.array:

@@ -9,6 +9,12 @@ from .clip_text import CLIPTextConfig, CLIPTextModel
 from .dit import DiT, DiTConfig
 from .flux_transformer import FluxConfig, FluxTransformer2DModel
 from .gemma3 import Gemma3Config, Gemma3TextEncoder
+from .ltx2_audio import (
+    LTX2AudioDecoder,
+    LTX2AudioDecoderConfig,
+    LTX2Vocoder,
+    LTX2VocoderConfig,
+)
 from .ltx2_connectors import LTX2ConnectorsConfig, LTX2TextConnectors
 from .ltx2_transformer import LTX2Transformer3DModel, LTX2TransformerConfig
 from .t5 import T5Config, T5EncoderModel
@@ -51,4 +57,8 @@ __all__ = [
     "LTX2ConnectorsConfig",
     "LTX2VideoDecoder",
     "LTX2VAEDecoderConfig",
+    "LTX2AudioDecoder",
+    "LTX2AudioDecoderConfig",
+    "LTX2Vocoder",
+    "LTX2VocoderConfig",
 ]

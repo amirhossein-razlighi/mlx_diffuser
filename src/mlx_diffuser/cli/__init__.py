@@ -26,7 +26,8 @@ class _ModelSpec:
     repo: str  # Hugging Face repo id (for --download)
     local: str  # default local checkpoint dir
     patterns: tuple[str, ...]  # snapshot_download allow_patterns
-    run: Callable[[str, argparse.Namespace], mx.array]  # (folder, args) -> (B, ...) array
+    # (folder, args) -> (B, ...) array, or (video, audio) for audio-video models
+    run: Callable[[str, argparse.Namespace], mx.array | tuple[mx.array, mx.array]]
     aliases: tuple[str, ...] = ()
     default_hw: tuple[int, int] | None = None  # (height, width) when --size unset
     default_fps: int = 8
@@ -94,11 +95,11 @@ def _run_wan(folder: str, a: argparse.Namespace) -> mx.array:
     )
 
 
-def _run_ltx2(folder: str, a: argparse.Namespace) -> mx.array:
+def _run_ltx2(folder: str, a: argparse.Namespace) -> tuple[mx.array, mx.array]:
     from ..pipelines import LTX2Pipeline
 
     pipe = LTX2Pipeline.from_converted(folder)
-    return pipe(
+    return pipe(  # (video, 48 kHz stereo audio)
         a.prompt,
         negative_prompt=a.negative or "",
         height=a.height,
@@ -174,15 +175,20 @@ def _resolve_model(name: str) -> tuple[str, _ModelSpec]:
     raise SystemExit(f"Unknown model {name!r}. Known text-to-X models: {known}")
 
 
-def _save_output(out: Path, array: mx.array, modality: str, fps: int) -> None:
+def _save_output(
+    out: Path, array: mx.array, modality: str, fps: int, audio: mx.array | None = None
+) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     if modality == "video" and out.suffix.lower() == ".mp4":  # (B, T, H, W, 3) -> H.264
-        _save_mp4(out, array[0], fps)
+        _save_mp4(out, array[0], fps, audio=audio)
     elif modality == "video":  # (B, T, H, W, 3) -> animated GIF
         frames = [to_pil(array[0, i]) for i in range(array.shape[1])]
         frames[0].save(
             out, save_all=True, append_images=frames[1:], duration=int(1000 / fps), loop=0
         )
+        if audio is not None:  # GIF can't carry sound: drop a wav next to it
+            _save_wav(out.with_suffix(".wav"), audio)
+            logger.info("GIF has no audio track; waveform saved -> %s", out.with_suffix(".wav"))
     else:  # (B, H, W, 3) -> one image per batch element
         if array.shape[0] == 1:
             to_pil(array[0]).save(out)
@@ -193,10 +199,28 @@ def _save_output(out: Path, array: mx.array, modality: str, fps: int) -> None:
     logger.info("saved -> %s", out)
 
 
-def _save_mp4(out: Path, frames: mx.array, fps: int) -> None:
-    """Encode ``(T, H, W, 3)`` frames in [-1, 1] to H.264 via the ffmpeg binary."""
+def _save_wav(path: Path, audio: mx.array, sample_rate: int = 48000) -> None:
+    """Write a ``(channels, samples)`` waveform in [-1, 1] as 16-bit PCM."""
+    import wave
+
+    import numpy as np
+
+    pcm = np.array(mx.clip(audio, -1.0, 1.0) * 32767.0).astype("<i2")
+    with wave.open(str(path), "wb") as f:
+        f.setnchannels(pcm.shape[0])
+        f.setsampwidth(2)
+        f.setframerate(sample_rate)
+        f.writeframes(pcm.T.tobytes())  # interleaved
+
+
+def _save_mp4(out: Path, frames: mx.array, fps: int, audio: mx.array | None = None) -> None:
+    """Encode ``(T, H, W, 3)`` frames in [-1, 1] to H.264 via the ffmpeg binary.
+
+    ``audio`` (``(channels, samples)`` at 48 kHz, [-1, 1]) is muxed in as AAC.
+    """
     import shutil
     import subprocess
+    import tempfile
 
     import numpy as np
 
@@ -204,30 +228,17 @@ def _save_mp4(out: Path, frames: mx.array, fps: int) -> None:
         raise SystemExit("saving .mp4 needs ffmpeg on PATH (brew install ffmpeg), or use .gif")
     u8 = np.array(mx.clip((frames + 1.0) * 127.5, 0, 255).astype(mx.uint8))
     t, h, w, _ = u8.shape
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-loglevel",
-        "error",
-        "-f",
-        "rawvideo",
-        "-pix_fmt",
-        "rgb24",
-        "-s",
-        f"{w}x{h}",
-        "-r",
-        str(fps),
-        "-i",
-        "-",
-        "-c:v",
-        "libx264",
-        "-pix_fmt",
-        "yuv420p",
-        "-crf",
-        "18",
-        str(out),
-    ]
-    subprocess.run(cmd, input=u8.tobytes(), check=True)
+    video_in = ["-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}", "-r", str(fps), "-i", "-"]
+    video_out = ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18"]
+    with tempfile.TemporaryDirectory() as tmp:
+        cmd = ["ffmpeg", "-y", "-loglevel", "error", *video_in]
+        if audio is not None:
+            wav = Path(tmp) / "audio.wav"
+            _save_wav(wav, audio)
+            cmd += ["-i", str(wav), *video_out, "-c:a", "aac", "-b:a", "192k", "-shortest"]
+        else:
+            cmd += video_out
+        subprocess.run([*cmd, str(out)], input=u8.tobytes(), check=True)
 
 
 def _cmd_generate(args: argparse.Namespace) -> None:
@@ -265,11 +276,18 @@ def _cmd_generate(args: argparse.Namespace) -> None:
 
     logger.info("generating %s with %s …", spec.modality, key)
     out_array = spec.run(folder, args)
+    audio = None
+    if isinstance(out_array, tuple):  # audio-video models return (video, audio)
+        out_array, audio = out_array
     mx.eval(out_array)
     default_ext = spec.video_ext if spec.modality == "video" else ".png"
     out = Path(args.out) if args.out else Path(f"{key}{default_ext}")
     _save_output(
-        out, out_array, spec.modality, args.fps if args.fps is not None else spec.default_fps
+        out,
+        out_array,
+        spec.modality,
+        args.fps if args.fps is not None else spec.default_fps,
+        audio=audio,
     )
 
 
