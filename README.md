@@ -139,4 +139,4 @@ flow-matching tomorrow. See [DESIGN.md](DESIGN.md) and the
 
 ## License
 
-Apache-2.0.
+CC0-1.0
