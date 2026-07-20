@@ -103,6 +103,15 @@ def test_euler_sampling_runs():
     assert bool(mx.all(mx.isfinite(sample)).item())
 
 
+def test_scheduler_can_start_partway_through_schedule():
+    sch = EulerDiscreteScheduler()
+    sch.set_timesteps(10)
+    sch.set_begin_index(6)
+    assert sch._step_index == 6
+    with pytest.raises(ValueError, match="begin_index"):
+        sch.set_begin_index(10)
+
+
 def test_sample_timesteps_shapes():
     key = mx.random.key(0)
     assert DDPMScheduler().sample_timesteps(8, key).shape == (8,)

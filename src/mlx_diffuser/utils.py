@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import mlx.core as mx
@@ -17,6 +18,7 @@ __all__ = [
     "as_dtype",
     "get_logger",
     "seed_everything",
+    "prepare_image",
     "to_pil",
     "to_array",
 ]
@@ -76,6 +78,56 @@ def to_array(image: Image.Image | np.ndarray, dtype: mx.Dtype = mx.float32) -> m
     if arr.ndim == 2:
         arr = arr[..., None]
     return mx.array(arr).astype(dtype)
+
+
+def prepare_image(
+    image,
+    *,
+    height: int,
+    width: int,
+    dtype: mx.Dtype = mx.float32,
+) -> mx.array:
+    """Prepare a path, PIL image, NumPy array, or MLX array for image conditioning.
+
+    Paths and PIL images are converted to RGB and resized with Lanczos. Array inputs
+    must already have the requested spatial size and be ``HWC`` or ``BHWC``. Integer
+    arrays are normalized to ``[-1, 1]``; floating-point arrays are assumed to
+    already use that range.
+    """
+    import numpy as np
+    from PIL import Image
+
+    if isinstance(image, (str, Path)):
+        with Image.open(image) as opened:
+            image = opened.convert("RGB").resize((width, height), Image.Resampling.LANCZOS)
+    elif isinstance(image, Image.Image):
+        image = image.convert("RGB").resize((width, height), Image.Resampling.LANCZOS)
+
+    if isinstance(image, Image.Image):
+        array = to_array(image, dtype=dtype)[None]
+    elif isinstance(image, mx.array):
+        array = image
+        if array.dtype == mx.uint8:
+            array = array.astype(mx.float32) / 127.5 - 1.0
+        else:
+            array = array.astype(dtype)
+    else:
+        np_image = np.asarray(image)
+        if np.issubdtype(np_image.dtype, np.integer):
+            np_image = np_image.astype(np.float32) / 127.5 - 1.0
+        array = mx.array(np_image).astype(dtype)
+
+    if array.ndim == 3:
+        array = array[None]
+    if array.ndim != 4:
+        raise ValueError(f"image must have shape (H, W, C) or (B, H, W, C), got {array.shape}.")
+    if array.shape[1:3] != (height, width):
+        raise ValueError(
+            f"array image must already be {height}x{width}; got {array.shape[1]}x{array.shape[2]}."
+        )
+    if array.shape[-1] != 3:
+        raise ValueError(f"image must have 3 RGB channels, got {array.shape[-1]}.")
+    return array
 
 
 def to_pil(array: mx.array) -> Image.Image:

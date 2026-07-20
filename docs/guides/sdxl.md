@@ -39,6 +39,38 @@ the VAE in fp32 (SDXL's VAE overflows fp16). `height`/`width` must be multiples 
 The runnable script is
 [`examples/sdxl_text_to_image.py`](https://github.com/AmirHossein-razlighi/mlx_diffuser/blob/main/examples/sdxl_text_to_image.py).
 
+## Image-to-image
+
+The same pipeline can start from an image instead of pure noise. Paths and PIL
+images are resized with Lanczos; MLX/NumPy arrays must already be BHWC or HWC in
+`[-1, 1]` at the requested size.
+
+```python
+from mlx_diffuser import StableDiffusionXLPipeline, to_pil
+
+pipe = StableDiffusionXLPipeline.from_diffusers("checkpoints/sdxl-base-1.0")
+image = pipe(
+    "an expressive oil painting, visible brush strokes, warm gallery lighting",
+    image="photo.jpg",
+    strength=0.65,
+    height=1024,
+    width=1024,
+    seed=0,
+    tile_vae=True,
+    release_text_encoders=True,
+)
+to_pil(image[0]).save("painted.png")
+```
+
+`strength` is in `(0, 1]`: lower values preserve more of the source composition;
+higher values allow a larger transformation. The equivalent CLI invocation is:
+
+```bash
+mlx-diffuser generate --model sdxl --image photo.jpg --strength 0.65 \
+  --prompt "an expressive oil painting, warm gallery lighting" \
+  --low-memory --out painted.png
+```
+
 ## The checkpoint converter
 
 `mlx_diffuser.converters` maps each diffusers/transformers component folder onto the
@@ -77,3 +109,5 @@ a single batched forward per step.
   to ≈ 2.5 GB.
 - Lower `num_inference_steps`, enable `cache_interval=2`, and `tile_vae=True` for the
   lightest footprint.
+- `release_text_encoders=True` frees both CLIP encoders before denoising. The CLI's
+  `--low-memory` preset enables this, tiled decode, and 8-bit UNet weights together.

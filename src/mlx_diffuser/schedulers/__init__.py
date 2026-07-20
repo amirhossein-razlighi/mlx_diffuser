@@ -11,6 +11,7 @@ from .ddim import DDIMConfig, DDIMScheduler
 from .ddpm import DDPMConfig, DDPMScheduler
 from .euler import EulerConfig, EulerDiscreteScheduler
 from .flow_match_euler import FlowMatchConfig, FlowMatchEulerScheduler
+from .trellis_flow import TrellisFlowEulerSampler, TrellisFlowSample
 
 #: Maps the config class name stored in config.json -> scheduler class.
 SCHEDULERS: dict[str, type[Scheduler]] = {
@@ -48,6 +49,8 @@ __all__ = [
     "EulerConfig",
     "FlowMatchEulerScheduler",
     "FlowMatchConfig",
+    "TrellisFlowEulerSampler",
+    "TrellisFlowSample",
     "SCHEDULERS",
     "load_scheduler",
 ]

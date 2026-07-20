@@ -2,6 +2,34 @@
 
 ## Generate
 
+For a production checkpoint:
+
+```bash
+mlx-diffuser generate --model flux --prompt "a red fox in snow" \
+  --low-memory --out fox.png
+```
+
+For SDXL image-to-image:
+
+```bash
+mlx-diffuser generate --model sdxl --image photo.jpg --strength 0.65 \
+  --prompt "an expressive oil painting" --low-memory --out painted.png
+```
+
+For experimental image-to-3D with TRELLIS:
+
+```bash
+uv sync --extra trellis
+uv run mlx-diffuser generate --model trellis --image object.png \
+  --download --out object.ply
+```
+
+The first command makes the Hub converter available. The generation command downloads
+only the required official components, converts them to the staged MLX layout, and
+exports a standard 3D Gaussian PLY. See the [TRELLIS guide](guides/trellis.md).
+
+For a library-native saved pipeline:
+
 ```python
 from mlx_diffuser import DiffusionPipeline
 

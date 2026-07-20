@@ -11,7 +11,7 @@ import pytest
 import mlx_diffuser
 from mlx_diffuser.configuration import Config
 from mlx_diffuser.modeling import ModelMixin
-from mlx_diffuser.utils import as_dtype, seed_everything, to_array, to_pil
+from mlx_diffuser.utils import as_dtype, prepare_image, seed_everything, to_array, to_pil
 
 
 @dataclasses.dataclass
@@ -112,3 +112,19 @@ def test_image_roundtrip():
     back = to_array(pil)
     # uint8 quantization tolerance.
     assert mx.max(mx.abs(back - img)).item() < 0.02
+
+
+def test_prepare_image_path_resizes_and_batches(tmp_path):
+    Image = pytest.importorskip("PIL.Image")
+    path = tmp_path / "input.png"
+    Image.new("RGB", (12, 20), color=(255, 0, 0)).save(path)
+    image = prepare_image(path, height=16, width=24)
+    assert image.shape == (1, 16, 24, 3)
+    assert image.dtype == mx.float32
+    assert mx.min(image).item() >= -1.0
+    assert mx.max(image).item() <= 1.0
+
+
+def test_prepare_image_rejects_wrong_array_size():
+    with pytest.raises(ValueError, match="must already be 16x16"):
+        prepare_image(mx.zeros((8, 8, 3)), height=16, width=16)

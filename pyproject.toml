@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Diffusion training and sampling on Apple silicon with MLX."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "Apache-2.0" }
+license = { file = "LICENSE" }
 authors = [
   { name = "Amirhossein", email = "arazlighi@gmail.com" },
 ]
@@ -22,12 +22,14 @@ keywords = [
   "stable-diffusion",
   "generative-ai",
   "image-generation",
+  "3d-generation",
+  "trellis",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: Apache Software License",
+  "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
   "Operating System :: MacOS",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
@@ -55,6 +57,9 @@ dev = [
   "mypy>=1.13.0",
 ]
 hub = [
+  "huggingface_hub>=0.25.0",
+]
+trellis = [
   "huggingface_hub>=0.25.0",
 ]
 docs = [

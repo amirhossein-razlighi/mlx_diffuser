@@ -6,6 +6,7 @@ from .autoencoder_kl_sd import AutoencoderKLSD, AutoencoderKLSDConfig
 from .autoencoder_kl_video import AutoencoderKLVideo, AutoencoderKLVideoConfig
 from .autoencoder_kl_wan import AutoencoderKLWan, AutoencoderKLWanConfig
 from .clip_text import CLIPTextConfig, CLIPTextModel
+from .dinov2 import DINOv2Config, DINOv2Model
 from .dit import DiT, DiTConfig
 from .flux_transformer import FluxConfig, FluxTransformer2DModel
 from .gemma3 import Gemma3Config, Gemma3TextEncoder
@@ -18,6 +19,18 @@ from .ltx2_audio import (
 from .ltx2_connectors import LTX2ConnectorsConfig, LTX2TextConnectors
 from .ltx2_transformer import LTX2Transformer3DModel, LTX2TransformerConfig
 from .t5 import T5Config, T5EncoderModel
+from .trellis import (
+    TrellisSparseStructureDecoder,
+    TrellisSparseStructureDecoderConfig,
+    TrellisSparseStructureFlowConfig,
+    TrellisSparseStructureFlowModel,
+)
+from .trellis_gaussian import (
+    GaussianSplat3D,
+    TrellisGaussianDecoder,
+    TrellisGaussianDecoderConfig,
+)
+from .trellis_slat import TrellisSLatFlowConfig, TrellisSLatFlowModel
 from .unet2d import UNet2D, UNet2DConfig
 from .unet_sdxl import SDXLUNet, SDXLUNetConfig
 from .video_dit import VideoDiT, VideoDiTConfig
@@ -26,6 +39,8 @@ from .wan_transformer import WanTransformer3DModel, WanTransformerConfig
 __all__ = [
     "DiT",
     "DiTConfig",
+    "DINOv2Model",
+    "DINOv2Config",
     "UNet2D",
     "UNet2DConfig",
     "AutoencoderKL",
@@ -61,4 +76,13 @@ __all__ = [
     "LTX2AudioDecoderConfig",
     "LTX2Vocoder",
     "LTX2VocoderConfig",
+    "TrellisSparseStructureFlowModel",
+    "TrellisSparseStructureFlowConfig",
+    "TrellisSparseStructureDecoder",
+    "TrellisSparseStructureDecoderConfig",
+    "TrellisSLatFlowModel",
+    "TrellisSLatFlowConfig",
+    "TrellisGaussianDecoder",
+    "TrellisGaussianDecoderConfig",
+    "GaussianSplat3D",
 ]

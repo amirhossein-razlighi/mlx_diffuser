@@ -42,6 +42,29 @@ print(memory_report())        # {'active_gb': ..., 'peak_gb': ..., 'cache_gb': .
 clear_cache()                 # return cached buffers to the OS
 ```
 
+## The 16 GB preset
+
+The CLI can choose the safe defaults as a group:
+
+```bash
+mlx-diffuser generate --model flux --prompt "..." --low-memory --out image.png
+```
+
+| Pipeline | `--low-memory` behavior |
+| --- | --- |
+| SDXL | 8-bit UNet, release both CLIP encoders, tiled VAE decode |
+| FLUX.1 | 4-bit transformer/T5, release text encoders, tiled VAE decode |
+| WAN 2.1 | 4-bit transformer and released umT5 encoder |
+| LTX-2.3 | already staged; only one large component is resident at a time |
+| TRELLIS | always staged; 8-bit dense weights, per-block sparse evaluation, Metal sparse Conv3D |
+
+This is a fit-first preset, not always the fastest setting. Once a workload is stable,
+benchmark individual switches and keep only those needed for the chosen resolution.
+
+The verified TRELLIS image-large sample (25 + 25 steps, seed 42) completed in 202.36
+seconds at 2.07 GB MLX peak memory on an 8-core M1 Pro with 16 GB unified memory.
+Checkpoint download/conversion and the documentation preview render are excluded.
+
 ## Benchmarking
 
 ```bash

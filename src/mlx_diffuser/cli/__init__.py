@@ -7,6 +7,7 @@ import dataclasses
 import json
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import mlx.core as mx
 
@@ -22,17 +23,18 @@ logger = get_logger()
 class _ModelSpec:
     """A named text-to-X model: where its checkpoint lives and how to run it."""
 
-    modality: str  # "image" | "video"
+    modality: str  # "image" | "video" | "3d"
     repo: str  # Hugging Face repo id (for --download)
     local: str  # default local checkpoint dir
     patterns: tuple[str, ...]  # snapshot_download allow_patterns
     # (folder, args) -> (B, ...) array, or (video, audio) for audio-video models
-    run: Callable[[str, argparse.Namespace], mx.array | tuple[mx.array, mx.array]]
+    run: Callable[[str, argparse.Namespace], Any]
     aliases: tuple[str, ...] = ()
     default_hw: tuple[int, int] | None = None  # (height, width) when --size unset
     default_fps: int = 8
     video_ext: str = ".gif"
     download: Callable[[str], None] | None = None  # custom fetch (else snapshot_download)
+    supports_image_input: bool = False
 
 
 def _diffusers_patterns(*components: str) -> tuple[str, ...]:
@@ -45,17 +47,21 @@ def _diffusers_patterns(*components: str) -> tuple[str, ...]:
 def _run_sdxl(folder: str, a: argparse.Namespace) -> mx.array:
     from ..pipelines import StableDiffusionXLPipeline
 
-    pipe = StableDiffusionXLPipeline.from_diffusers(folder, quantize_unet=a.quantize)
+    quantize = a.quantize if a.quantize is not None else (8 if a.low_memory else None)
+    pipe = StableDiffusionXLPipeline.from_diffusers(folder, quantize_unet=quantize)
     return pipe(
         a.prompt,
         negative_prompt=a.negative or "",
+        image=a.image,
+        strength=a.strength,
         height=a.height,
         width=a.width,
         num_inference_steps=a.steps if a.steps is not None else 30,
         guidance_scale=a.guidance if a.guidance is not None else 5.0,
         seed=a.seed,
         cache_interval=int(a.cache) if a.cache else 1,
-        tile_vae=a.tile_vae,
+        tile_vae=a.tile_vae or a.low_memory,
+        release_text_encoders=a.release_text_encoders or a.low_memory,
     )
 
 
@@ -73,15 +79,16 @@ def _run_flux(folder: str, a: argparse.Namespace, *, dev: bool) -> mx.array:
         max_sequence_length=a.max_seq if a.max_seq is not None else (512 if dev else 256),
         seed=a.seed,
         cache_threshold=a.cache or 0.0,
-        tile_vae=a.tile_vae,
-        release_text_encoders=a.release_text_encoders,
+        tile_vae=a.tile_vae or a.low_memory,
+        release_text_encoders=a.release_text_encoders or a.low_memory,
     )
 
 
 def _run_wan(folder: str, a: argparse.Namespace) -> mx.array:
     from ..pipelines import WanPipeline
 
-    pipe = WanPipeline.from_diffusers(folder, quantize_transformer=a.quantize)
+    quantize = a.quantize if a.quantize is not None else (4 if a.low_memory else None)
+    pipe = WanPipeline.from_diffusers(folder, quantize_transformer=quantize)
     return pipe(
         a.prompt,
         negative_prompt=a.negative or "",
@@ -120,6 +127,28 @@ def _download_ltx2(folder: str) -> None:
     convert_ltx2_checkpoint(folder)
 
 
+def _run_trellis(folder: str, args: argparse.Namespace):
+    from ..pipelines import TrellisImageTo3DPipeline
+
+    if not args.image:
+        raise SystemExit("TRELLIS image-to-3D requires --image PATH")
+    pipeline = TrellisImageTo3DPipeline.from_pretrained(folder)
+    return pipeline(
+        args.image,
+        seed=args.seed,
+        sparse_structure_steps=args.steps if args.steps is not None else 25,
+        slat_steps=args.steps if args.steps is not None else 25,
+        remove_background=args.remove_background,
+        low_memory=True,
+    )
+
+
+def _download_trellis(folder: str) -> None:
+    from ..converters.trellis import download_and_convert_trellis
+
+    download_and_convert_trellis(folder)
+
+
 MODELS: dict[str, _ModelSpec] = {
     "sdxl": _ModelSpec(
         "image",
@@ -127,6 +156,7 @@ MODELS: dict[str, _ModelSpec] = {
         "checkpoints/sdxl-base-1.0",
         _diffusers_patterns("text_encoder", "text_encoder_2", "unet", "vae"),
         _run_sdxl,
+        supports_image_input=True,
     ),
     "flux-schnell": _ModelSpec(
         "image",
@@ -163,6 +193,17 @@ MODELS: dict[str, _ModelSpec] = {
         video_ext=".mp4",
         download=_download_ltx2,
     ),
+    "trellis": _ModelSpec(
+        "3d",
+        "microsoft/TRELLIS-image-large",
+        "checkpoints/trellis-image-large-mlx",
+        (),
+        _run_trellis,
+        aliases=("trellis-image",),
+        video_ext=".ply",
+        download=_download_trellis,
+        supports_image_input=True,
+    ),
 }
 
 
@@ -176,10 +217,12 @@ def _resolve_model(name: str) -> tuple[str, _ModelSpec]:
 
 
 def _save_output(
-    out: Path, array: mx.array, modality: str, fps: int, audio: mx.array | None = None
+    out: Path, array: Any, modality: str, fps: int, audio: mx.array | None = None
 ) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
-    if modality == "video" and out.suffix.lower() == ".mp4":  # (B, T, H, W, 3) -> H.264
+    if modality == "3d":
+        array.save_ply(out)
+    elif modality == "video" and out.suffix.lower() == ".mp4":  # (B, T, H, W, 3) -> H.264
         _save_mp4(out, array[0], fps, audio=audio)
     elif modality == "video":  # (B, T, H, W, 3) -> animated GIF
         frames = [to_pil(array[0, i]) for i in range(array.shape[1])]
@@ -244,16 +287,27 @@ def _save_mp4(out: Path, frames: mx.array, fps: int, audio: mx.array | None = No
 def _cmd_generate(args: argparse.Namespace) -> None:
     model = args.model or args.model_pos
     if model is None:
-        raise SystemExit("pass a model: --model sdxl|flux|flux-dev|wan (or a path with --labels)")
+        raise SystemExit(
+            "pass a model: --model sdxl|flux|flux-dev|wan|ltx-2.3|trellis "
+            "(or a path with --labels)"
+        )
 
-    # Legacy class-conditional path: a saved DiffusionPipeline folder driven by --labels.
-    if args.prompt is None:
-        _generate_class_conditional(model, args)
-        return
-
-    key, spec = _resolve_model(model)
+    try:
+        key, spec = _resolve_model(model)
+    except SystemExit:
+        # Legacy class-conditional path: a saved DiffusionPipeline folder driven by labels.
+        if args.prompt is None:
+            _generate_class_conditional(model, args)
+            return
+        raise
+    if args.prompt is None and spec.modality != "3d":
+        raise SystemExit(f"model {key!r} requires --prompt")
     if args.modality and args.modality != spec.modality:
         raise SystemExit(f"model {key!r} is a {spec.modality} model, not {args.modality!r}")
+    if args.image and not spec.supports_image_input:
+        raise SystemExit(f"model {key!r} does not support --image conditioning yet.")
+    if spec.modality == "3d" and not args.image:
+        raise SystemExit(f"model {key!r} requires --image PATH")
 
     folder = args.checkpoint or spec.local
     if args.download:
@@ -275,12 +329,15 @@ def _cmd_generate(args: argparse.Namespace) -> None:
     args.width = args.width if args.width is not None else default_w
 
     logger.info("generating %s with %s …", spec.modality, key)
+    mx.reset_peak_memory()
     out_array = spec.run(folder, args)
+    peak_memory_gb = mx.get_peak_memory() / 1024**3
     audio = None
     if isinstance(out_array, tuple):  # audio-video models return (video, audio)
         out_array, audio = out_array
-    mx.eval(out_array)
-    default_ext = spec.video_ext if spec.modality == "video" else ".png"
+    if spec.modality != "3d":
+        mx.eval(out_array)
+    default_ext = spec.video_ext if spec.modality in {"video", "3d"} else ".png"
     out = Path(args.out) if args.out else Path(f"{key}{default_ext}")
     _save_output(
         out,
@@ -289,6 +346,7 @@ def _cmd_generate(args: argparse.Namespace) -> None:
         args.fps if args.fps is not None else spec.default_fps,
         audio=audio,
     )
+    logger.info("MLX peak memory: %.2f GB", peak_memory_gb)
 
 
 def _download(spec: _ModelSpec, folder: str) -> None:
@@ -420,10 +478,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     g = sub.add_parser(
         "generate",
-        help="text-to-image / text-to-video from a named model, or a saved pipeline",
+        help="image, video, and image-to-3D generation from a named model",
         description="Examples:\n"
         '  mlx-diffuser generate --model flux  --prompt "a red fox in snow" --out fox.png\n'
         '  mlx-diffuser generate --model sdxl  --prompt "a lion at sunset"  --out lion.png\n'
+        '  mlx-diffuser generate --model sdxl --image photo.jpg --strength .65 --prompt "oil painting"\n'
+        "  mlx-diffuser generate --model trellis --image object.png --out object.ply\n"
         '  mlx-diffuser generate --model wan --modality video --prompt "a panda surfing" '
         "--out panda.gif\n"
         "  mlx-diffuser generate --model flux --prompt ... --download   # fetch the checkpoint first",
@@ -437,12 +497,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="(legacy) saved class-conditional pipeline path; prefer --model",
     )
     g.add_argument(
-        "--model", default=None, help="sdxl | flux | flux-dev | wan | ltx-2.3 (or a path)"
+        "--model", default=None, help="sdxl | flux | flux-dev | wan | ltx-2.3 | trellis"
     )
-    g.add_argument("--modality", choices=["image", "video"], default=None, help="cross-check")
+    g.add_argument(
+        "--modality", choices=["image", "video", "3d"], default=None, help="cross-check"
+    )
     g.add_argument("--prompt", default=None, help="text prompt (selects the text-to-X path)")
     g.add_argument("--negative", default=None, help="negative prompt (SDXL / WAN)")
-    g.add_argument("--out", default=None, help="output file (image .png / video .gif)")
+    g.add_argument("--image", default=None, help="input image path (SDXL img2img / TRELLIS 3D)")
+    g.add_argument(
+        "--remove-background",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        dest="remove_background",
+        help="TRELLIS: remove opaque backgrounds with optional rembg (default: on)",
+    )
+    g.add_argument(
+        "--strength",
+        type=float,
+        default=0.8,
+        help="input transformation strength in (0, 1] (default: 0.8)",
+    )
+    g.add_argument("--out", default=None, help="output file (image .png / video .gif / 3D .ply)")
     g.add_argument("--checkpoint", default=None, help="checkpoint dir override")
     g.add_argument("--download", action="store_true", help="download the checkpoint first")
     # generation knobs (per-model defaults applied when unset)
@@ -454,6 +530,12 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--seed", type=int, default=0)
     g.add_argument("--quantize", type=int, default=None, help="weight bits (4/8)")
     g.add_argument(
+        "--low-memory",
+        action="store_true",
+        dest="low_memory",
+        help="16 GB preset: quantize large weights, release encoders, and tile VAE decode",
+    )
+    g.add_argument(
         "--cache", type=float, default=None, help="DeepCache interval / FBCache threshold"
     )
     g.add_argument("--tile-vae", action="store_true", dest="tile_vae", help="tiled VAE decode")
@@ -461,7 +543,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--release-text-encoders",
         action="store_true",
         dest="release_text_encoders",
-        help="free text encoders before denoising (FLUX)",
+        help="free text encoders before denoising (SDXL / FLUX)",
     )
     g.add_argument(
         "--frames",
