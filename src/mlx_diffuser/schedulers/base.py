@@ -108,6 +108,21 @@ class Scheduler:
         """Optional pre-network input scaling (identity unless overridden)."""
         return sample
 
+    def set_begin_index(self, begin_index: int) -> None:
+        """Start sampling partway through the configured schedule.
+
+        Image/video-to-X pipelines use this after adding noise to encoded input
+        latents. Keeping the step cursor on the scheduler avoids pipeline code
+        reaching into scheduler internals.
+        """
+        if self.timesteps is None:
+            raise RuntimeError("call set_timesteps() before set_begin_index().")
+        if not 0 <= begin_index < len(self.timesteps):
+            raise ValueError(
+                f"begin_index must be in [0, {len(self.timesteps) - 1}], got {begin_index}."
+            )
+        self._step_index = begin_index
+
     # --- persistence ------------------------------------------------------
     def save_pretrained(self, save_directory) -> None:
         self.config.save(save_directory)

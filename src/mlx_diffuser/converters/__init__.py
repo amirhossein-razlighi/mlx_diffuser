@@ -16,10 +16,18 @@ from .base import (
     load_safetensors_folder,
     register_converter,
 )
+from .trellis import (
+    convert_trellis_checkpoint,
+    convert_trellis_dense_components,
+    download_and_convert_trellis,
+)
 
 __all__ = [
     "Converter",
     "convert_conv_weight",
+    "convert_trellis_checkpoint",
+    "convert_trellis_dense_components",
+    "download_and_convert_trellis",
     "get_converter",
     "load_safetensors_folder",
     "register_converter",

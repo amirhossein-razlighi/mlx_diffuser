@@ -116,7 +116,12 @@ class Converter:
             hf_config = _load_json(cfg) if cfg.exists() else {}
             weights = load_safetensors_folder(source)
         else:
-            sibling = source.parent / "config.json"
+            # Standalone research checkpoints commonly use ``component.json`` next
+            # to ``component.safetensors`` (TRELLIS does this), while diffusers uses
+            # a generic ``config.json`` inside each component directory.
+            named_sibling = source.with_suffix(".json")
+            generic_sibling = source.parent / "config.json"
+            sibling = named_sibling if named_sibling.exists() else generic_sibling
             hf_config = _load_json(sibling) if sibling.exists() else {}
             weights = mx.load(str(source))  # type: ignore[assignment]
 

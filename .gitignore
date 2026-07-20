@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+.DS_Store
 *.py[codz]
 *$py.class
 
@@ -209,3 +210,5 @@ __marimo__/
 data/
 # Downloaded model checkpoints (large, not versioned)
 checkpoints/
+# Generated samples and large 3D exports (documentation previews live in docs/assets).
+outputs/

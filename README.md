@@ -1,7 +1,7 @@
 # mlx-diffuser
 
 **Diffusion & flow models on Apple silicon, powered by [MLX](https://github.com/ml-explore/mlx).**
-Train from scratch, fine-tune, or run inference — for image, video, and discrete
+Train from scratch, fine-tune, or run inference — for image, video, 3D, and discrete
 modalities — from one small, readable codebase.
 
 [![PyPI version](https://img.shields.io/pypi/v/mlx-diffuser?color=blue)](https://pypi.org/project/mlx-diffuser/)
@@ -55,6 +55,23 @@ muxed into the mp4. The ~94 GB official release is *stream-converted* to ~20 GB 
 16 GB Mac peaks at one component at a time. See the
 [LTX-2.3 guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/ltx2/).
 
+<table>
+<tr>
+<td align="center"><img src="docs/assets/trellis_boot_input.png" width="360" alt="TRELLIS boot input"></td>
+<td align="center"><img src="docs/assets/trellis_boot_views.png" width="520" alt="TRELLIS reconstructed boot from four views"></td>
+</tr>
+<tr>
+<td align="center"><sub>synthetic photorealistic input</sub></td>
+<td align="center"><sub>real TRELLIS image-large output, four PLY preview views</sub></td>
+</tr>
+</table>
+
+**TRELLIS image-to-3D, running natively in MLX.** This official-checkpoint sample used
+seed 42 and 25 + 25 flow steps on a 16 GB M1 Pro: **202.36 s**, **2.07 GB MLX peak
+memory**, and no swap. The output contains 433,408 3D Gaussians; the image above is a
+lightweight depth-aware preview of the exported PLY. See the
+[TRELLIS guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/trellis/).
+
 ---
 
 If you know PyTorch and 🤗 `diffusers`, you already know this library:
@@ -62,11 +79,25 @@ If you know PyTorch and 🤗 `diffusers`, you already know this library:
 is underneath — unified memory, `mx.compile`, fused Metal kernels, and built-in
 weight quantization, so large models fit and run fast on a Mac.
 
+## What runs today
+
+| Model | Text conditioned | Image conditioned | Output | 16 GB strategy |
+| --- | --- | --- | --- | --- |
+| SDXL base | ✅ | ✅ img2img | image | fp16 or 8-bit UNet, tiled VAE |
+| FLUX.1 schnell/dev | ✅ | — | image | 4-bit transformer + T5, staged encoders |
+| WAN 2.1 1.3B | ✅ | — | video | optional 4-bit transformer, released text encoder |
+| LTX-2.3 22B | ✅ | — | video + audio | 4-bit components loaded one stage at a time |
+| TRELLIS image-large | — | ✅ single image | 3D Gaussian PLY | 8-bit dense stages, sparse Metal kernels, staged loading |
+
+See the [image, video, and 3D roadmap](https://amirhossein-razlighi.github.io/mlx_diffuser/roadmap/)
+for the next checkpoint families and the 16 GB acceptance bar.
+
 ## Install
 
 ```bash
 pip install mlx-diffuser          # core
 pip install "mlx-diffuser[hub]"   # + Hugging Face Hub loading
+pip install "mlx-diffuser[trellis]" # + TRELLIS checkpoint download/conversion
 ```
 
 Requires Apple silicon (M-series) and Python 3.11+.
@@ -74,16 +105,43 @@ Requires Apple silicon (M-series) and Python 3.11+.
 ## Generate
 
 ```python
-from mlx_diffuser import DiffusionPipeline
+from mlx_diffuser import StableDiffusionXLPipeline, to_pil
 
-pipe = DiffusionPipeline.from_pretrained("path/or/hub-id", dtype="bf16", quantize=4)
-images = pipe([1, 2, 3], num_inference_steps=50, guidance_scale=4.0, seed=0)
+pipe = StableDiffusionXLPipeline.from_diffusers("checkpoints/sdxl-base-1.0")
+image = pipe("a cinematic photo of a red fox in fresh snow", seed=0)
+to_pil(image[0]).save("fox.png")
 ```
 
 …or from the terminal:
 
 ```bash
-mlx-diffuser generate path/or/hub-id --labels 1,2,3 --steps 50 --out samples/
+mlx-diffuser generate --model flux --prompt "a cinematic red fox in snow" \
+  --low-memory --out fox.png
+```
+
+## Turn an image into 3D
+
+The experimental native TRELLIS pipeline converts the official image-large weights,
+runs each component one at a time, and exports standard 3D Gaussian splats. A
+transparent PNG gives the most reliable object crop.
+
+```bash
+mlx-diffuser generate --model trellis --image object.png --download \
+  --out object.ply
+```
+
+See the [TRELLIS guide](https://amirhossein-razlighi.github.io/mlx_diffuser/guides/trellis/)
+for the Python API, conversion flow, low-memory design, and current limitations.
+
+## Edit an image
+
+SDXL image-to-image uses the same checkpoint: the input is VAE-encoded, noised at
+the selected strength, and denoised under the new prompt.
+
+```bash
+mlx-diffuser generate --model sdxl --image photo.jpg --strength 0.65 \
+  --prompt "an expressive oil painting, warm gallery lighting" \
+  --low-memory --out painted.png
 ```
 
 ## Train from scratch
@@ -120,13 +178,14 @@ mlx-diffuser train --data ./photos --base my-model --lora --out my-lora --steps 
 ## What's inside
 
 - **Models** — `DiT` (image/video/text via config), `UNet2D` (Stable-Diffusion
-  style, text-conditionable), `AutoencoderKL` (VAE for latent diffusion).
+  style, text-conditionable), `AutoencoderKL` (VAE for latent diffusion), and native
+  TRELLIS dense/sparse 3D modules.
 - **Schedulers** — `DDPM`, `DDIM`, `EulerDiscrete`, `FlowMatchEuler`; one object
   covers both training (`add_noise`/`get_target`) and sampling (`step`).
 - **Training** — `DiffusionTrainer` (compiled step, EMA, grad clip, min-SNR
   weighting), full fine-tune, and LoRA.
-- **Apple-silicon speed** — fused attention, `mx.compile`, lazy evaluation,
-  unified-memory controls, and 4/8-bit weight quantization.
+- **Apple-silicon speed** — fused attention, custom Metal sparse Conv3D, `mx.compile`,
+  lazy evaluation, unified-memory controls, and 4/8-bit weight quantization.
 - **CLI** — `generate`, `train`, `convert`.
 
 ## Design

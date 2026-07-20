@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import mlx.core as mx
+import numpy as np
+import pytest
 
 from mlx_diffuser.caching import DeepCache
 from mlx_diffuser.models import (
@@ -13,7 +15,9 @@ from mlx_diffuser.models import (
     SDXLUNet,
     SDXLUNetConfig,
 )
+from mlx_diffuser.pipelines.sdxl import StableDiffusionXLPipeline
 from mlx_diffuser.quantization import quantize_module
+from mlx_diffuser.schedulers.euler import EulerConfig, EulerDiscreteScheduler
 
 
 def tiny_clip(**kw) -> CLIPTextConfig:
@@ -139,6 +143,55 @@ def test_unet_quantized_runs():
     mx.eval(unet.parameters())
     out = unet(*_unet_inputs(unet))
     assert out.shape == (1, 16, 16, 4)
+
+
+class _TinyTokenizer:
+    def __call__(self, *args, **kwargs):
+        del args, kwargs
+        return {"input_ids": np.array([[1, 2, 3, 4, 0, 0, 0, 0]], dtype=np.int32)}
+
+
+def test_sdxl_image_to_image_runs():
+    clip_1 = CLIPTextModel(
+        tiny_clip(hidden_size=8, intermediate_size=16, num_attention_heads=2, projection_dim=8)
+    )
+    clip_2 = CLIPTextModel(
+        tiny_clip(
+            hidden_size=8,
+            intermediate_size=16,
+            num_attention_heads=2,
+            with_projection=True,
+            projection_dim=16,
+        )
+    )
+    pipe = StableDiffusionXLPipeline(
+        SDXLUNet(tiny_unet()),
+        AutoencoderKLSD(tiny_vae()),
+        clip_1,
+        clip_2,
+        _TinyTokenizer(),
+        _TinyTokenizer(),
+        EulerDiscreteScheduler(EulerConfig(num_train_timesteps=20)),
+    )
+    image = mx.zeros((1, 16, 16, 3))
+    output = pipe(
+        "turn it into a painting",
+        image=image,
+        strength=0.5,
+        height=16,
+        width=16,
+        num_inference_steps=2,
+        guidance_scale=1.0,
+        progress=False,
+    )
+    assert output.shape == image.shape
+    assert bool(mx.all(mx.isfinite(output)).item())
+
+
+def test_sdxl_image_to_image_validates_strength():
+    pipe = object.__new__(StableDiffusionXLPipeline)
+    with pytest.raises(ValueError, match="strength"):
+        pipe("x", image=mx.zeros((1, 16, 16, 3)), strength=0.0, height=16, width=16)
 
 
 # --- DeepCache ---------------------------------------------------------------

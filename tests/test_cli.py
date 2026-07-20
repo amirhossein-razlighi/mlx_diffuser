@@ -41,6 +41,47 @@ def test_parser_builds():
     assert args.labels == "1,2"
 
 
+def test_parser_accepts_image_conditioning():
+    parser = build_parser()
+    args = parser.parse_args(
+        ["generate", "--model", "sdxl", "--prompt", "painted", "--image", "input.png"]
+    )
+    assert args.image == "input.png"
+    assert args.strength == 0.8
+
+
+def test_parser_accepts_low_memory_preset():
+    args = build_parser().parse_args(
+        ["generate", "--model", "sdxl", "--prompt", "painted", "--low-memory"]
+    )
+    assert args.low_memory is True
+
+
+def test_parser_accepts_trellis_image_to_3d_without_prompt():
+    args = build_parser().parse_args(
+        [
+            "generate",
+            "--model",
+            "trellis",
+            "--image",
+            "object.png",
+            "--remove-background",
+            "--out",
+            "object.ply",
+        ]
+    )
+    assert args.prompt is None
+    assert args.image == "object.png"
+    assert args.remove_background is True
+
+
+def test_parser_can_keep_trellis_background_explicitly():
+    args = build_parser().parse_args(
+        ["generate", "--model", "trellis", "--image", "object.png", "--no-remove-background"]
+    )
+    assert args.remove_background is False
+
+
 def test_generate_model_aliases_resolve():
     from mlx_diffuser.cli import _resolve_model
 
@@ -48,6 +89,8 @@ def test_generate_model_aliases_resolve():
     assert _resolve_model("wan")[0] == "wan-1.3b"
     assert _resolve_model("sdxl")[1].modality == "image"
     assert _resolve_model("wan")[1].modality == "video"
+    assert _resolve_model("trellis-image")[0] == "trellis"
+    assert _resolve_model("trellis")[1].modality == "3d"
 
 
 def test_generate_unknown_model_errors():
@@ -61,9 +104,37 @@ def test_generate_missing_checkpoint_errors(tmp_path):
         main(["generate", "--model", "sdxl", "--prompt", "x", "--checkpoint", str(missing)])
 
 
+def test_generate_trellis_missing_checkpoint_errors_without_prompt(tmp_path):
+    missing = tmp_path / "absent"
+    with pytest.raises(SystemExit, match="checkpoint not found"):
+        main(
+            [
+                "generate",
+                "--model",
+                "trellis",
+                "--image",
+                "object.png",
+                "--checkpoint",
+                str(missing),
+            ]
+        )
+
+
+def test_generate_trellis_requires_image_before_download():
+    with pytest.raises(SystemExit, match="requires --image"):
+        main(["generate", "--model", "trellis", "--download"])
+
+
 def test_generate_modality_mismatch_errors():
     with pytest.raises(SystemExit, match="not 'video'"):
         main(["generate", "--model", "flux", "--modality", "video", "--prompt", "x"])
+
+
+def test_generate_rejects_image_for_unsupported_model(tmp_path):
+    image = tmp_path / "input.png"
+    Image.new("RGB", (8, 8)).save(image)
+    with pytest.raises(SystemExit, match="does not support --image"):
+        main(["generate", "--model", "flux", "--prompt", "x", "--image", str(image)])
 
 
 def test_generate_writes_images(tmp_path):

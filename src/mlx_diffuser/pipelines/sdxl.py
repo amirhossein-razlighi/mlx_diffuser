@@ -10,6 +10,7 @@ Tensors are channels-last. Images come back as ``(B, H, W, 3)`` in ``[-1, 1]``.
 
 from __future__ import annotations
 
+import gc
 from pathlib import Path
 from typing import cast
 
@@ -20,6 +21,7 @@ from ..models.autoencoder_kl_sd import AutoencoderKLSD
 from ..models.clip_text import CLIPTextModel
 from ..models.unet_sdxl import SDXLUNet
 from ..schedulers.euler import EulerConfig, EulerDiscreteScheduler
+from ..utils import prepare_image
 
 MAX_TOKENS = 77
 
@@ -120,12 +122,21 @@ class StableDiffusionXLPipeline:
         embeds = mx.concatenate([hs1[-2], hs2[-2]], axis=-1)  # (1, 77, 768+1280)
         return embeds, pooled
 
+    def release_text_encoder_models(self) -> None:
+        """Release both CLIP encoders after prompt encoding to reduce peak memory."""
+        self.text_encoder = None  # type: ignore[assignment]
+        self.text_encoder_2 = None  # type: ignore[assignment]
+        gc.collect()
+        mx.clear_cache()
+
     # --- generation ----------------------------------------------------------
     def __call__(
         self,
         prompt: str,
         *,
         negative_prompt: str = "",
+        image=None,
+        strength: float = 0.8,
         height: int = 1024,
         width: int = 1024,
         num_inference_steps: int = 30,
@@ -133,16 +144,22 @@ class StableDiffusionXLPipeline:
         seed: int = 0,
         cache_interval: int = 1,
         tile_vae: bool = False,
+        release_text_encoders: bool = False,
         progress: bool = True,
     ) -> mx.array:
         """Generate an image ``(1, height, width, 3)`` in ``[-1, 1]``.
 
-        ``height`` / ``width`` must be multiples of 8. ``cache_interval`` enables
+        Pass ``image`` (a path, PIL image, or HWC/BHWC array) for image-to-image;
+        ``strength`` controls how far the result may move from the input (0 < strength
+        <= 1). ``height`` / ``width`` must be multiples of 8. ``cache_interval`` enables
         DeepCache (1 = off/exact; 2 ≈ 1.5-1.8x by skipping the deep UNet blocks on every
         other step). ``tile_vae`` decodes the VAE in tiles to bound memory at high res.
+        ``release_text_encoders`` reclaims both CLIP encoders before denoising.
         """
         if height % 8 or width % 8:
             raise ValueError("height and width must be multiples of 8.")
+        if image is not None and not 0.0 < strength <= 1.0:
+            raise ValueError("strength must be in the interval (0, 1].")
 
         use_cfg = guidance_scale > 1.0
         pe, pooled = self.encode_prompt(prompt)
@@ -153,6 +170,8 @@ class StableDiffusionXLPipeline:
         else:
             context, text_embeds = pe, pooled
         n = context.shape[0]
+        if release_text_encoders:
+            self.release_text_encoder_models()
         time_ids = mx.broadcast_to(
             mx.array([[float(height), float(width), 0.0, 0.0, float(height), float(width)]]),
             (n, 6),
@@ -161,8 +180,30 @@ class StableDiffusionXLPipeline:
         self.scheduler.set_timesteps(num_inference_steps)
         steps = self.scheduler.timesteps
         assert steps is not None
-        latents = mx.random.normal((1, height // 8, width // 8, 4), key=mx.random.key(seed))
-        latents = latents * self.scheduler.init_noise_sigma
+        if image is None:
+            latents = mx.random.normal(
+                (1, height // 8, width // 8, self.vae.config.latent_channels),
+                key=mx.random.key(seed),
+            )
+            latents = latents * self.scheduler.init_noise_sigma
+        else:
+            input_image = prepare_image(image, height=height, width=width, dtype=mx.float32)
+            if input_image.shape[0] != 1:
+                raise ValueError("SDXL image-to-image currently accepts exactly one input image.")
+            latent_key, noise_key = mx.random.split(mx.random.key(seed))
+            clean_latents = (
+                self.vae.encode(input_image).sample(latent_key) * self.vae.scaling_factor
+            )
+            noise = mx.random.normal(clean_latents.shape, key=noise_key)
+            denoise_steps = max(1, min(num_inference_steps, int(num_inference_steps * strength)))
+            begin_index = num_inference_steps - denoise_steps
+            assert self.scheduler.sigmas is not None
+            latents = self.scheduler.add_noise_sigma(
+                clean_latents, noise, self.scheduler.sigmas[begin_index]
+            )
+            self.scheduler.set_begin_index(begin_index)
+            steps = steps[begin_index:]
+            mx.eval(latents)
 
         cache = DeepCache(cache_interval) if cache_interval > 1 else None
         for i, t in enumerate(steps):
