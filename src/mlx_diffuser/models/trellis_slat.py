@@ -60,16 +60,12 @@ class _SparseResBlock3D(nn.Module):
         self.norm1 = LayerNorm32(channels, affine=True)
         self.norm2 = LayerNorm32(self.out_channels, affine=False)
         self.conv1 = SparseConv3D(channels, self.out_channels, 3, use_metal=use_metal)
-        self.conv2 = SparseConv3D(
-            self.out_channels, self.out_channels, 3, use_metal=use_metal
-        )
+        self.conv2 = SparseConv3D(self.out_channels, self.out_channels, 3, use_metal=use_metal)
         self.conv2.conv.weight = mx.zeros_like(self.conv2.conv.weight)
         self.conv2.conv.bias = mx.zeros_like(self.conv2.conv.bias)
         self.emb_layers = [nn.SiLU(), nn.Linear(emb_channels, 2 * self.out_channels)]
         self.skip_connection = (
-            SparseLinear(channels, self.out_channels)
-            if channels != self.out_channels
-            else None
+            SparseLinear(channels, self.out_channels) if channels != self.out_channels else None
         )
 
     def __call__(self, x: SparseTensor, emb: mx.array) -> SparseTensor:
@@ -113,7 +109,10 @@ class TrellisSLatFlowModel(ModelMixin[TrellisSLatFlowConfig]):
 
         self.t_embedder = TrellisTimestepEmbedder(config.model_channels)
         if config.share_mod:
-            self.adaLN_modulation = [nn.SiLU(), nn.Linear(config.model_channels, 6 * config.model_channels)]
+            self.adaLN_modulation = [
+                nn.SiLU(),
+                nn.Linear(config.model_channels, 6 * config.model_channels),
+            ]
             self.adaLN_modulation[1].weight = mx.zeros_like(self.adaLN_modulation[1].weight)
             self.adaLN_modulation[1].bias = mx.zeros_like(self.adaLN_modulation[1].bias)
 
@@ -234,9 +233,7 @@ class TrellisSLatFlowModel(ModelMixin[TrellisSLatFlowConfig]):
             if self.config.use_skip_connection:
                 h = h.replace(mx.concatenate([h.features, skip], axis=-1))
             h = block(h, mod)
-        h = h.replace(
-            LayerNorm32(h.features.shape[-1], affine=False, eps=1e-5)(h.features)
-        )
+        h = h.replace(LayerNorm32(h.features.shape[-1], affine=False, eps=1e-5)(h.features))
         return self.out_layer(h.astype(x.dtype))
 
 

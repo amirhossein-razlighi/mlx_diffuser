@@ -53,9 +53,7 @@ class TrellisFlowEulerSampler:
         if cond.shape[0] == batch_size:
             return cond
         if cond.shape[0] != 1:
-            raise ValueError(
-                f"conditioning batch must be 1 or {batch_size}, got {cond.shape[0]}"
-            )
+            raise ValueError(f"conditioning batch must be 1 or {batch_size}, got {cond.shape[0]}")
         return mx.broadcast_to(cond, (batch_size, *cond.shape[1:]))
 
     def sample(

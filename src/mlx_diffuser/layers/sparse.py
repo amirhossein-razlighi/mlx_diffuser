@@ -97,9 +97,7 @@ class SparseTensor:
         assert self.batch_size is not None
         counts = np.bincount(batch, minlength=self.batch_size)
         offsets = np.concatenate([[0], np.cumsum(counts)])
-        return tuple(
-            slice(int(offsets[i]), int(offsets[i + 1])) for i in range(self.batch_size)
-        )
+        return tuple(slice(int(offsets[i]), int(offsets[i + 1])) for i in range(self.batch_size))
 
     def _broadcast_other(self, other: Any) -> Any:
         if isinstance(other, SparseTensor):
@@ -253,12 +251,16 @@ def sparse_downsample(x: SparseTensor, factor: int = 2) -> SparseTensor:
     host[:, 1:] //= factor
     new_coords, inverse = np.unique(host, axis=0, return_inverse=True)
     inverse_mx = mx.array(inverse.astype(np.int32))
-    count = mx.zeros((len(new_coords), 1), dtype=mx.float32).at[inverse_mx].add(
-        mx.ones((x.num_points, 1), dtype=mx.float32)
+    count = (
+        mx.zeros((len(new_coords), 1), dtype=mx.float32)
+        .at[inverse_mx]
+        .add(mx.ones((x.num_points, 1), dtype=mx.float32))
     )
-    summed = mx.zeros((len(new_coords), x.features.shape[1]), dtype=x.features.dtype).at[
-        inverse_mx
-    ].add(x.features)
+    summed = (
+        mx.zeros((len(new_coords), x.features.shape[1]), dtype=x.features.dtype)
+        .at[inverse_mx]
+        .add(x.features)
+    )
     # Match torch.scatter_reduce(..., reduce="mean") with its default
     # include_self=True and a zero-initialized destination.
     features = summed / (count + 1).astype(summed.dtype)
@@ -290,9 +292,7 @@ def sparse_upsample(x: SparseTensor, factor: int = 2) -> SparseTensor:
     if cached is None:
         raise ValueError("sparse_upsample must be paired with a cached sparse_downsample")
     coords, inverse, spatial_shape, scale = cached
-    return SparseTensor(
-        x.features[inverse], coords, x.batch_size, spatial_shape, scale, x.cache
-    )
+    return SparseTensor(x.features[inverse], coords, x.batch_size, spatial_shape, scale, x.cache)
 
 
 def sparse_subdivide(x: SparseTensor) -> SparseTensor:
@@ -331,9 +331,7 @@ def _attention_groups(
         keys = coords[:, :1]
     else:
         shift = np.asarray(shift_window, dtype=np.int32)
-        keys = np.concatenate(
-            [coords[:, :1], ((coords[:, 1:] + shift) // window_size)], axis=1
-        )
+        keys = np.concatenate([coords[:, :1], ((coords[:, 1:] + shift) // window_size)], axis=1)
     groups: dict[tuple[int, ...], list[int]] = defaultdict(list)
     for index, key in enumerate(keys):
         groups[tuple(int(value) for value in key)].append(index)

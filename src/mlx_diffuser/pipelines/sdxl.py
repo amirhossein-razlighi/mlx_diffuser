@@ -191,7 +191,9 @@ class StableDiffusionXLPipeline:
             if input_image.shape[0] != 1:
                 raise ValueError("SDXL image-to-image currently accepts exactly one input image.")
             latent_key, noise_key = mx.random.split(mx.random.key(seed))
-            clean_latents = self.vae.encode(input_image).sample(latent_key) * self.vae.scaling_factor
+            clean_latents = (
+                self.vae.encode(input_image).sample(latent_key) * self.vae.scaling_factor
+            )
             noise = mx.random.normal(clean_latents.shape, key=noise_key)
             denoise_steps = max(1, min(num_inference_steps, int(num_inference_steps * strength)))
             begin_index = num_inference_steps - denoise_steps

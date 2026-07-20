@@ -59,7 +59,10 @@ class TrellisSparseStructureFlowModel(ModelMixin[TrellisSparseStructureFlowConfi
 
         self.t_embedder = TrellisTimestepEmbedder(config.model_channels)
         if config.share_mod:
-            self.adaLN_modulation = [nn.SiLU(), nn.Linear(config.model_channels, 6 * config.model_channels)]
+            self.adaLN_modulation = [
+                nn.SiLU(),
+                nn.Linear(config.model_channels, 6 * config.model_channels),
+            ]
             self.adaLN_modulation[1].weight = mx.zeros_like(self.adaLN_modulation[1].weight)
             self.adaLN_modulation[1].bias = mx.zeros_like(self.adaLN_modulation[1].bias)
 
@@ -138,7 +141,11 @@ class TrellisSparseStructureFlowModel(ModelMixin[TrellisSparseStructureFlowConfi
             t = mx.broadcast_to(t, (x.shape[0],))
         if t.shape != (x.shape[0],):
             raise ValueError(f"timesteps must have shape ({x.shape[0]},), got {t.shape}")
-        if cond.ndim != 3 or cond.shape[0] != x.shape[0] or cond.shape[-1] != self.config.cond_channels:
+        if (
+            cond.ndim != 3
+            or cond.shape[0] != x.shape[0]
+            or cond.shape[-1] != self.config.cond_channels
+        ):
             raise ValueError(
                 "conditioning must have shape "
                 f"(B, tokens, {self.config.cond_channels}), got {cond.shape}"
@@ -154,9 +161,7 @@ class TrellisSparseStructureFlowModel(ModelMixin[TrellisSparseStructureFlowConfi
             cond = cond.astype(mx.float16)
         for block in self.blocks:
             h = block(h, mod, cond)
-        h = LayerNorm32(self.config.model_channels, affine=False, eps=1e-5)(
-            h.astype(x.dtype)
-        )
+        h = LayerNorm32(self.config.model_channels, affine=False, eps=1e-5)(h.astype(x.dtype))
         return self._unpatchify(self.out_layer(h))
 
 
@@ -233,8 +238,7 @@ class TrellisSparseStructureDecoder(ModelMixin[TrellisSparseStructureDecoderConf
 
         self.input_layer = nn.Conv3d(config.latent_channels, config.channels[0], 3, padding=1)
         self.middle_block = [
-            _TrellisResBlock3D(config.channels[0])
-            for _ in range(config.num_res_blocks_middle)
+            _TrellisResBlock3D(config.channels[0]) for _ in range(config.num_res_blocks_middle)
         ]
         blocks: list[nn.Module] = []
         for i, channels in enumerate(config.channels):

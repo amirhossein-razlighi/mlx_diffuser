@@ -58,9 +58,7 @@ class DINOv2WithRegistersConverter(Converter):
     def build_model(self, hf_config: dict) -> DINOv2Model:
         return DINOv2Model(self.build_config(hf_config))
 
-    def convert_weights(
-        self, weights: dict[str, mx.array], hf_config: dict
-    ) -> dict[str, mx.array]:
+    def convert_weights(self, weights: dict[str, mx.array], hf_config: dict) -> dict[str, mx.array]:
         return {
             key: convert_conv_weight(value) if value.ndim == 4 else value
             for key, value in weights.items()
@@ -93,9 +91,7 @@ class TrellisSparseStructureFlowConverter(Converter):
     def build_model(self, hf_config: dict) -> TrellisSparseStructureFlowModel:
         return TrellisSparseStructureFlowModel(self.build_config(hf_config))
 
-    def convert_weights(
-        self, weights: dict[str, mx.array], hf_config: dict
-    ) -> dict[str, mx.array]:
+    def convert_weights(self, weights: dict[str, mx.array], hf_config: dict) -> dict[str, mx.array]:
         # MLX and PyTorch Linear weights are both (out, in). Parameter names match.
         return dict(weights)
 
@@ -119,9 +115,7 @@ class TrellisSparseStructureDecoderConverter(Converter):
     def build_model(self, hf_config: dict) -> TrellisSparseStructureDecoder:
         return TrellisSparseStructureDecoder(self.build_config(hf_config))
 
-    def convert_weights(
-        self, weights: dict[str, mx.array], hf_config: dict
-    ) -> dict[str, mx.array]:
+    def convert_weights(self, weights: dict[str, mx.array], hf_config: dict) -> dict[str, mx.array]:
         return {
             key: convert_conv_weight(value) if value.ndim == 5 else value
             for key, value in weights.items()
@@ -157,9 +151,7 @@ class TrellisSLatFlowConverter(Converter):
     def build_model(self, hf_config: dict) -> TrellisSLatFlowModel:
         return TrellisSLatFlowModel(self.build_config(hf_config))
 
-    def convert_weights(
-        self, weights: dict[str, mx.array], hf_config: dict
-    ) -> dict[str, mx.array]:
+    def convert_weights(self, weights: dict[str, mx.array], hf_config: dict) -> dict[str, mx.array]:
         # Official spconv tensors already use (O, kD, kH, kW, I), which is the
         # persistent layout retained by our custom Metal sparse-conv modules.
         return dict(weights)
@@ -202,9 +194,7 @@ class TrellisGaussianDecoderConverter(Converter):
     def build_model(self, hf_config: dict) -> TrellisGaussianDecoder:
         return TrellisGaussianDecoder(self.build_config(hf_config))
 
-    def convert_weights(
-        self, weights: dict[str, mx.array], hf_config: dict
-    ) -> dict[str, mx.array]:
+    def convert_weights(self, weights: dict[str, mx.array], hf_config: dict) -> dict[str, mx.array]:
         return dict(weights)
 
 
@@ -232,9 +222,7 @@ def convert_trellis_dense_components(
         if not path.exists():
             raise FileNotFoundError(f"missing official TRELLIS component: {path}")
 
-    flow = TrellisSparseStructureFlowConverter().convert(
-        flow_source, quantize=quantize_flow
-    )
+    flow = TrellisSparseStructureFlowConverter().convert(flow_source, quantize=quantize_flow)
     flow.save_pretrained(output / "sparse_structure_flow")
     if quantize_flow is not None:
         (output / "sparse_structure_flow" / "quantization.json").write_text(

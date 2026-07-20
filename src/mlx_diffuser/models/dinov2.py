@@ -54,12 +54,8 @@ class _DINOEmbeddings(nn.Module):
         self.patch_embeddings = _PatchEmbeddings(config)
         self.cls_token = mx.zeros((1, 1, config.hidden_size))
         self.mask_token = mx.zeros((1, config.hidden_size))
-        self.position_embeddings = mx.zeros(
-            (1, 1 + patches_per_axis**2, config.hidden_size)
-        )
-        self.register_tokens = mx.zeros(
-            (1, config.num_register_tokens, config.hidden_size)
-        )
+        self.position_embeddings = mx.zeros((1, 1 + patches_per_axis**2, config.hidden_size))
+        self.register_tokens = mx.zeros((1, config.num_register_tokens, config.hidden_size))
 
     def __call__(self, x: mx.array) -> mx.array:
         if x.ndim != 4 or x.shape[1:3] != (self.image_size, self.image_size):
@@ -141,14 +137,10 @@ class _DINOMLP(nn.Module):
 class _DINOEncoderLayer(nn.Module):
     def __init__(self, config: DINOv2Config):
         super().__init__()
-        self.norm1 = nn.LayerNorm(
-            config.hidden_size, eps=config.layer_norm_eps, affine=True
-        )
+        self.norm1 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps, affine=True)
         self.attention = _DINOAttention(config)
         self.layer_scale1 = _DINOLayerScale(config.hidden_size, config.layerscale_value)
-        self.norm2 = nn.LayerNorm(
-            config.hidden_size, eps=config.layer_norm_eps, affine=True
-        )
+        self.norm2 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps, affine=True)
         self.mlp = _DINOMLP(config)
         self.layer_scale2 = _DINOLayerScale(config.hidden_size, config.layerscale_value)
 
@@ -180,9 +172,7 @@ class DINOv2Model(ModelMixin[DINOv2Config]):
         self.config = config
         self.embeddings = _DINOEmbeddings(config)
         self.encoder = _DINOEncoder(config)
-        self.layernorm = nn.LayerNorm(
-            config.hidden_size, eps=config.layer_norm_eps, affine=True
-        )
+        self.layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps, affine=True)
 
     def __call__(
         self,

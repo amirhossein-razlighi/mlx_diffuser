@@ -86,9 +86,7 @@ class GaussianSplat3D:
     @property
     def scaling(self) -> mx.array:
         if self.scaling_activation == "softplus":
-            scale = nn_softplus(
-                self.scaling_raw + self._inverse_softplus(self.scaling_bias)
-            )
+            scale = nn_softplus(self.scaling_raw + self._inverse_softplus(self.scaling_bias))
         elif self.scaling_activation == "exp":
             scale = mx.exp(self.scaling_raw + np.log(self.scaling_bias))
         else:
@@ -138,9 +136,7 @@ class GaussianSplat3D:
                 axis=-1,
             )
         normals = np.zeros_like(xyz)
-        values = np.concatenate(
-            [xyz, normals, features, opacity, scaling, rotation], axis=-1
-        )
+        values = np.concatenate([xyz, normals, features, opacity, scaling, rotation], axis=-1)
         properties = [
             "x",
             "y",
@@ -219,7 +215,13 @@ class TrellisGaussianDecoder(ModelMixin[TrellisGaussianDecoderConfig]):
     def _representations(self, x: SparseTensor) -> list[GaussianSplat3D]:
         cfg = self.config
         g = cfg.num_gaussians
-        fields = ((3, cfg.xyz_lr), (3, cfg.features_lr), (3, cfg.scaling_lr), (4, cfg.rotation_lr), (1, cfg.opacity_lr))
+        fields = (
+            (3, cfg.xyz_lr),
+            (3, cfg.features_lr),
+            (3, cfg.scaling_lr),
+            (4, cfg.rotation_lr),
+            (1, cfg.opacity_lr),
+        )
         outputs: list[GaussianSplat3D] = []
         for layout in x.batch_layout():
             features = x.features[layout]
@@ -263,9 +265,7 @@ class TrellisGaussianDecoder(ModelMixin[TrellisGaussianDecoderConfig]):
             if low_memory:
                 mx.eval(h.features)
         h = h.astype(x.dtype)
-        h = h.replace(
-            LayerNorm32(self.config.model_channels, affine=False, eps=1e-5)(h.features)
-        )
+        h = h.replace(LayerNorm32(self.config.model_channels, affine=False, eps=1e-5)(h.features))
         h = self.out_layer(h)
         return self._representations(h)
 

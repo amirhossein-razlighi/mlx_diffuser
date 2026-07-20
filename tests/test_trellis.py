@@ -339,12 +339,8 @@ def test_complete_tiny_image_to_gaussian_pipeline():
             channels=(4, 2), num_res_blocks=1, num_res_blocks_middle=1, use_fp16=False
         )
     )
-    structure_decoder.out_layer[2].weight = mx.zeros_like(
-        structure_decoder.out_layer[2].weight
-    )
-    structure_decoder.out_layer[2].bias = mx.ones_like(
-        structure_decoder.out_layer[2].bias
-    )
+    structure_decoder.out_layer[2].weight = mx.zeros_like(structure_decoder.out_layer[2].weight)
+    structure_decoder.out_layer[2].bias = mx.ones_like(structure_decoder.out_layer[2].bias)
     slat_flow = TrellisSLatFlowModel(
         TrellisSLatFlowConfig(
             resolution=4,

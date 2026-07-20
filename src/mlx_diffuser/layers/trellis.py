@@ -93,9 +93,7 @@ class TrellisTimestepEmbedder(nn.Module):
     @staticmethod
     def timestep_embedding(t: mx.array, dim: int, max_period: float = 10000.0) -> mx.array:
         half = dim // 2
-        freqs = mx.exp(
-            -math.log(max_period) * mx.arange(half, dtype=mx.float32) / max(half, 1)
-        )
+        freqs = mx.exp(-math.log(max_period) * mx.arange(half, dtype=mx.float32) / max(half, 1))
         phases = t.astype(mx.float32).reshape(-1, 1) * freqs.reshape(1, -1)
         embedding = mx.concatenate([mx.cos(phases), mx.sin(phases)], axis=-1)
         if dim % 2:
@@ -115,7 +113,11 @@ class TrellisFeedForward(nn.Module):
     def __init__(self, channels: int, mlp_ratio: float):
         super().__init__()
         hidden = int(channels * mlp_ratio)
-        self.mlp = [nn.Linear(channels, hidden), nn.GELU(approx="precise"), nn.Linear(hidden, channels)]
+        self.mlp = [
+            nn.Linear(channels, hidden),
+            nn.GELU(approx="precise"),
+            nn.Linear(hidden, channels),
+        ]
 
     def __call__(self, x: mx.array) -> mx.array:
         # PyTorch's GELU(approximate="tanh") is MLX's gelu_approx.
@@ -168,9 +170,7 @@ class TrellisMultiHeadAttention(nn.Module):
         q = q.transpose(0, 2, 1, 3)
         k = k.transpose(0, 2, 1, 3)
         v = v.transpose(0, 2, 1, 3)
-        h = mx.fast.scaled_dot_product_attention(
-            q, k, v, scale=self.head_dim**-0.5
-        )
+        h = mx.fast.scaled_dot_product_attention(q, k, v, scale=self.head_dim**-0.5)
         return h.transpose(0, 2, 1, 3)
 
     def __call__(self, x: mx.array, context: mx.array | None = None) -> mx.array:
@@ -184,9 +184,7 @@ class TrellisMultiHeadAttention(nn.Module):
             )
             k, v = kv[:, :, 0], kv[:, :, 1]
         else:
-            qkv = self.to_qkv(x).reshape(
-                batch, length, 3, self.num_heads, self.head_dim
-            )
+            qkv = self.to_qkv(x).reshape(batch, length, 3, self.num_heads, self.head_dim)
             q, k, v = qkv[:, :, 0], qkv[:, :, 1], qkv[:, :, 2]
         h = self._attend(q, k, v).reshape(batch, length, self.channels)
         return self.to_out(h)
@@ -219,9 +217,7 @@ class TrellisModulatedCrossBlock(nn.Module):
         self.norm1 = LayerNorm32(channels, affine=False)
         self.norm2 = LayerNorm32(channels, affine=True)
         self.norm3 = LayerNorm32(channels, affine=False)
-        self.self_attn = TrellisMultiHeadAttention(
-            channels, num_heads, qk_rms_norm=qk_rms_norm
-        )
+        self.self_attn = TrellisMultiHeadAttention(channels, num_heads, qk_rms_norm=qk_rms_norm)
         self.cross_attn = TrellisMultiHeadAttention(
             channels,
             num_heads,
@@ -238,9 +234,7 @@ class TrellisModulatedCrossBlock(nn.Module):
     def __call__(self, x: mx.array, mod: mx.array, context: mx.array) -> mx.array:
         if not self.share_mod:
             mod = self.adaLN_modulation[1](nn.silu(mod))
-        shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = mx.split(
-            mod, 6, axis=-1
-        )
+        shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = mx.split(mod, 6, axis=-1)
 
         h = self.norm1(x)
         h = h * (1 + scale_msa[:, None]) + shift_msa[:, None]

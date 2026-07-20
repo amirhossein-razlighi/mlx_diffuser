@@ -106,9 +106,7 @@ class SparseMultiHeadAttention(nn.Module):
                 q, k = self.q_rms_norm(q), self.k_rms_norm(k)
             h = sparse_cross_attention(x, q, k, v)
         else:
-            qkv = self.to_qkv(x.features).reshape(
-                points, 3, self.num_heads, self.head_dim
-            )
+            qkv = self.to_qkv(x.features).reshape(points, 3, self.num_heads, self.head_dim)
             q, k, v = qkv[:, 0], qkv[:, 1], qkv[:, 2]
             if self.qk_rms_norm:
                 q, k = self.q_rms_norm(q), self.k_rms_norm(k)
@@ -150,9 +148,7 @@ class ModulatedSparseTransformerCrossBlock(nn.Module):
         self.norm1 = LayerNorm32(channels, affine=False)
         self.norm2 = LayerNorm32(channels, affine=True)
         self.norm3 = LayerNorm32(channels, affine=False)
-        self.self_attn = SparseMultiHeadAttention(
-            channels, num_heads, qk_rms_norm=qk_rms_norm
-        )
+        self.self_attn = SparseMultiHeadAttention(channels, num_heads, qk_rms_norm=qk_rms_norm)
         self.cross_attn = SparseMultiHeadAttention(
             channels,
             num_heads,
@@ -169,9 +165,7 @@ class ModulatedSparseTransformerCrossBlock(nn.Module):
     def __call__(self, x: SparseTensor, mod: mx.array, context: mx.array) -> SparseTensor:
         if not self.share_mod:
             mod = self.adaLN_modulation[1](nn.silu(mod))
-        shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = mx.split(
-            mod, 6, axis=-1
-        )
+        shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = mx.split(mod, 6, axis=-1)
         h = x.replace(self.norm1(x.features))
         h = h * (1 + scale_msa) + shift_msa
         x = x + self.self_attn(h) * gate_msa

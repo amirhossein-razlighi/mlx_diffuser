@@ -288,8 +288,7 @@ def _cmd_generate(args: argparse.Namespace) -> None:
     model = args.model or args.model_pos
     if model is None:
         raise SystemExit(
-            "pass a model: --model sdxl|flux|flux-dev|wan|ltx-2.3|trellis "
-            "(or a path with --labels)"
+            "pass a model: --model sdxl|flux|flux-dev|wan|ltx-2.3|trellis (or a path with --labels)"
         )
 
     try:
@@ -496,12 +495,8 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="MODEL",
         help="(legacy) saved class-conditional pipeline path; prefer --model",
     )
-    g.add_argument(
-        "--model", default=None, help="sdxl | flux | flux-dev | wan | ltx-2.3 | trellis"
-    )
-    g.add_argument(
-        "--modality", choices=["image", "video", "3d"], default=None, help="cross-check"
-    )
+    g.add_argument("--model", default=None, help="sdxl | flux | flux-dev | wan | ltx-2.3 | trellis")
+    g.add_argument("--modality", choices=["image", "video", "3d"], default=None, help="cross-check")
     g.add_argument("--prompt", default=None, help="text prompt (selects the text-to-X path)")
     g.add_argument("--negative", default=None, help="negative prompt (SDXL / WAN)")
     g.add_argument("--image", default=None, help="input image path (SDXL img2img / TRELLIS 3D)")

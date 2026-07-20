@@ -159,13 +159,13 @@ class TrellisImageTo3DPipeline:
         if image.ndim == 3:
             image = image[None]
         if image.shape[1:] != (518, 518, 3):
-            raise ValueError(f"preprocessed image must have shape (B, 518, 518, 3), got {image.shape}")
+            raise ValueError(
+                f"preprocessed image must have shape (B, 518, 518, 3), got {image.shape}"
+            )
         mean = mx.array([0.485, 0.456, 0.406]).reshape(1, 1, 1, 3)
         std = mx.array([0.229, 0.224, 0.225]).reshape(1, 1, 1, 3)
         model = self._load("image_conditioner")
-        conditioning = model.trellis_conditioning(
-            (image - mean) / std, low_memory=low_memory
-        )
+        conditioning = model.trellis_conditioning((image - mean) / std, low_memory=low_memory)
         mx.eval(conditioning)
         self._release("image_conditioner")
         return conditioning
@@ -181,9 +181,7 @@ class TrellisImageTo3DPipeline:
     ) -> mx.array:
         flow = self._load("sparse_structure_flow")
         if conditioning.shape[0] == 1 and num_samples > 1:
-            conditioning = mx.broadcast_to(
-                conditioning, (num_samples, *conditioning.shape[1:])
-            )
+            conditioning = mx.broadcast_to(conditioning, (num_samples, *conditioning.shape[1:]))
         noise = mx.random.normal(
             (
                 num_samples,
@@ -228,9 +226,7 @@ class TrellisImageTo3DPipeline:
         flow = self._load("slat_flow")
         batch_size = int(mx.max(coords[:, 0]).item()) + 1
         if conditioning.shape[0] == 1 and batch_size > 1:
-            conditioning = mx.broadcast_to(
-                conditioning, (batch_size, *conditioning.shape[1:])
-            )
+            conditioning = mx.broadcast_to(conditioning, (batch_size, *conditioning.shape[1:]))
         noise = SparseTensor(
             mx.random.normal((coords.shape[0], flow.config.in_channels), key=key),
             coords,
