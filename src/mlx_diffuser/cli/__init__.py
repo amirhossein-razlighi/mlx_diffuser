@@ -349,13 +349,21 @@ def _cmd_generate(args: argparse.Namespace) -> None:
 
 
 def _download(spec: _ModelSpec, folder: str) -> None:
+    from ..licenses import install_model_license_files, model_license_summary
+
+    logger.warning(
+        "upstream model terms apply to %s: %s",
+        spec.repo,
+        model_license_summary(spec.repo),
+    )
     logger.info("downloading %s -> %s …", spec.repo, folder)
     if spec.download is not None:
         spec.download(folder)
-        return
-    from huggingface_hub import snapshot_download
+    else:
+        from huggingface_hub import snapshot_download
 
-    snapshot_download(spec.repo, local_dir=folder, allow_patterns=list(spec.patterns))
+        snapshot_download(spec.repo, local_dir=folder, allow_patterns=list(spec.patterns))
+    install_model_license_files(spec.repo, folder)
 
 
 def _generate_class_conditional(model: str, args: argparse.Namespace) -> None:

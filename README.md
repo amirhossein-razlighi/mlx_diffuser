@@ -89,6 +89,11 @@ weight quantization, so large models fit and run fast on a Mac.
 | LTX-2.3 22B | ✅ | — | video + audio | 4-bit components loaded one stage at a time |
 | TRELLIS image-large | — | ✅ single image | 3D Gaussian PLY | 8-bit dense stages, sparse Metal kernels, staged loading |
 
+> [!IMPORTANT]
+> The CC0-1.0 license covers original `mlx-diffuser` code only. Model weights,
+> converted checkpoints, and model derivatives remain subject to their upstream
+> licenses and usage terms. See [Model and checkpoint licenses](#model-and-checkpoint-licenses).
+
 See the [image, video, and 3D roadmap](https://amirhossein-razlighi.github.io/mlx_diffuser/roadmap/)
 for the next checkpoint families and the 16 GB acceptance bar.
 
@@ -198,4 +203,32 @@ flow-matching tomorrow. See [DESIGN.md](DESIGN.md) and the
 
 ## License
 
-CC0-1.0
+Original `mlx-diffuser` code is released under [CC0-1.0](LICENSE), except where
+otherwise noted. This dedication applies only to material authored for this
+repository; it does not grant rights to third-party code, model weights, converted
+checkpoints, tokenizers, model-specific assets, or derivatives of upstream models.
+
+### Model and checkpoint licenses
+
+Downloading, converting, running, modifying, or redistributing a supported model
+remains subject to that model's upstream license and acceptable-use terms.
+Quantization or conversion to MLX does not change those terms.
+
+| Model | Upstream terms |
+| --- | --- |
+| Stable Diffusion XL | [CreativeML Open RAIL++-M](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/LICENSE.md) |
+| FLUX.1-schnell | [Apache License 2.0](https://huggingface.co/black-forest-labs/FLUX.1-schnell) |
+| FLUX.1-dev | [FLUX.1 Dev Non-Commercial License](https://github.com/black-forest-labs/flux/blob/main/model_licenses/LICENSE-FLUX1-dev) |
+| WAN 2.1 | [Apache License 2.0 and upstream usage terms](https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B-Diffusers) |
+| LTX-2.3 | [LTX-2 Community License Agreement](https://github.com/Lightricks/LTX-2/blob/main/LICENSE) |
+| TRELLIS image-large | [MIT License](https://github.com/microsoft/TRELLIS/blob/main/LICENSE) |
+| DINOv2 with registers | [Apache License 2.0](https://huggingface.co/facebook/dinov2-with-registers-large) |
+
+In particular, FLUX.1-dev restricts model use to non-commercial purposes unless a
+separate license is obtained. The LTX-2 Community License contains use restrictions,
+redistribution requirements, and requires a separate commercial license for entities
+with annual revenues of at least US$10 million. Users are responsible for reviewing
+the current upstream terms before use.
+
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for code provenance, bundled
+license copies, and additional details.
