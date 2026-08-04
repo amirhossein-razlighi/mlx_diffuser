@@ -11,8 +11,11 @@ from mlx_diffuser.licenses import install_model_license_files, model_license_sum
 def test_install_ltx_license_files(tmp_path):
     install_model_license_files("Lightricks/LTX-2.3", tmp_path)
 
-    assert (tmp_path / "LTX-2-COMMUNITY.txt").read_text().lstrip().startswith(
-        "LTX-2 Community License Agreement"
+    assert (
+        (tmp_path / "LTX-2-COMMUNITY.txt")
+        .read_text()
+        .lstrip()
+        .startswith("LTX-2 Community License Agreement")
     )
     notice = (tmp_path / "MODEL_LICENSES.md").read_text()
     assert "Lightricks/LTX-2.3" in notice
